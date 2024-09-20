@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "932210995235",
+    "project_id": "ghost-bfe01",
+    "storage_bucket": "ghost-bfe01.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932210995235:android:97b677825b1cb0afb58196",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3CaD1f3Laha_asag16Te7rnvDhH0WiVk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

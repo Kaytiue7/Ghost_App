@@ -1,0 +1,100 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal">
+
+        <com.github.siyamed.shapeimageview.CircularImageView
+
+            android:id="@+id/imageView"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="left"
+            android:layout_marginTop="50dp"
+            android:layout_marginBottom="10dp"
+            android:src="@drawable/ronaldo"
+
+            />
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginLeft="20dp"
+            android:textSize="17dp"
+            android:text="username"/>
+
+
+    </LinearLayout>
+
+    <!-- Profile Photo -->
+
+
+    <LinearLayout
+        android:layout_width="309dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical">
+
+
+    <!-- TextView for label -->
+    <EditText
+        android:id="@+id/editText"
+        android:layout_width="309dp"
+        android:layout_height="wrap_content"
+        android:hint="Mesaj"
+        android:textSize="16sp" />
+
+    <!-- Selected Photo -->
+
+        <ImageView
+            android:id="@+id/delete"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+
+            android:visibility="gone"
+            android:layout_gravity="right"
+            android:src="@drawable/x"
+            />
+
+    <ImageView
+        android:id="@+id/selectedPhoto"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+
+        android:background="#CCCCCC"
+        android:visibility="gone"
+        android:src="@drawable/ronaldo"
+        />
+
+
+
+    <!-- Button to select photo from gallery -->
+    <ImageView
+        android:id="@+id/selectPhotoButton"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:src="@drawable/upload"
+        />
+</LinearLayout>
+    <Button
+        android:id="@+id/gonder"
+        android:layout_gravity="center"
+        android:layout_width="145dp"
+        android:layout_height="wrap_content"
+        android:text="Gönder" />
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:max="100"/>
+
+</LinearLayout>
