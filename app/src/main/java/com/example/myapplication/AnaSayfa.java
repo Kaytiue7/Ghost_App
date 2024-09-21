@@ -128,11 +128,11 @@ public class AnaSayfa extends Fragment {
                                                 adapter.notifyDataSetChanged();
                                             });
                                     if (replyId!=null){
-                                        Post post = new Post(id,replyId, metin, image, username, date2, image);
+                                        Post post = new Post(id,replyId, metin, image, username, date2, image, 0);
                                         postList.add(post);
                                     }
                                     else{
-                                        Post post = new Post(id,null, metin, image, username, date2, image);
+                                        Post post = new Post(id,null, metin, image, username, date2, image, 0);
                                         postList.add(post);
                                     }
 

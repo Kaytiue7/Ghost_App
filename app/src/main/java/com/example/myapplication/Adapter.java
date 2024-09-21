@@ -162,7 +162,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                     if (task.isSuccessful() && task.getResult() != null) {
                         DocumentSnapshot postSnapshot = task.getResult();
                         String likeCount = String.valueOf(postSnapshot.getLong("likeCount")); // Long değerini al
-                        holder.btnBegenmeSayisi.setText("Beğeni Sayısı: "+likeCount); // beğeni sayısını set et
+                        holder.btnBegenmeSayisi.setText(likeCount); // beğeni sayısını set et
                     }
                 });
 

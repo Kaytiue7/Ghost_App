@@ -214,11 +214,11 @@ private FirebaseFirestore firebaseFirestore;
 
                                                 // Create the Post object and add it to the list
                                                 if (replyId!=null){
-                                                    Post post = new Post(id,replyId, metin, image, username, date2, image);
+                                                    Post post = new Post(id,replyId, metin, image, username, date2, image, 0);
                                                     postList.add(post);
                                                 }
                                                 else{
-                                                    Post post = new Post(id,null, metin, image, username, date2, image);
+                                                    Post post = new Post(id,null, metin, image, username, date2, image, 0);
                                                     postList.add(post);
                                                 }
                                                 adapter.notifyDataSetChanged();
@@ -246,7 +246,6 @@ private FirebaseFirestore firebaseFirestore;
                     if (!queryDocumentSnapshots.isEmpty()) {
                         postList.clear(); // Önceki verileri temizle
 
-
                         for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
                             String postId = snapshot.getString("postId"); // Beğenilen gönderinin ID'si
 
@@ -257,7 +256,7 @@ private FirebaseFirestore firebaseFirestore;
                                         if (postSnapshot.exists()) {
                                             Map<String, Object> postData = postSnapshot.getData();
                                             if (postData != null) {
-                                                String id = snapshot.getId();
+                                                String id = postSnapshot.getId();
                                                 String metin = (String) postData.get("metin");
                                                 String image = (String) postData.get("image");
                                                 String replyId = (String) postData.get("repyledPost");
@@ -265,28 +264,35 @@ private FirebaseFirestore firebaseFirestore;
                                                 Timestamp date = (Timestamp) postData.get("date");
                                                 String date2 = getTimeAgo(date);
 
-                                                // Kullanıcıdan profil fotoğrafını al
-                                                firebaseFirestore.collection("Users").whereEqualTo("username", username)
+                                                // Beğeni sayısını almak için usersLiked koleksiyonunu sorgula
+                                                firebaseFirestore.collection("usersLiked")
+                                                        .whereEqualTo("postId", postId)
                                                         .get()
-                                                        .addOnCompleteListener(userTask -> {
-                                                            String pp = null;
+                                                        .addOnSuccessListener(likesSnapshot -> {
+                                                            int likeCount = likesSnapshot.size(); // Beğeni sayısını al
 
-                                                            if (userTask.isSuccessful() && !userTask.getResult().isEmpty()) {
-                                                                DocumentSnapshot userSnapshot = userTask.getResult().getDocuments().get(0);
-                                                                pp = userSnapshot.getString("profilePhoto");
-                                                            }
+                                                            // Kullanıcıdan profil fotoğrafını al
+                                                            firebaseFirestore.collection("Users").whereEqualTo("username", username)
+                                                                    .get()
+                                                                    .addOnCompleteListener(userTask -> {
+                                                                        String pp = null;
 
-                                                            // Post nesnesini oluştur ve listeye ekle
-                                                            if (replyId!=null){
-                                                                Post post = new Post(id,replyId, metin, image, username, date2, image);
-                                                                postList.add(post);
-                                                            }
-                                                            else{
-                                                                Post post = new Post(id,null, metin, image, username, date2, image);
-                                                                postList.add(post);
-                                                            }
+                                                                        if (userTask.isSuccessful() && !userTask.getResult().isEmpty()) {
+                                                                            DocumentSnapshot userSnapshot = userTask.getResult().getDocuments().get(0);
+                                                                            pp = userSnapshot.getString("profilePhoto");
+                                                                        }
 
-                                                            adapter.notifyDataSetChanged();
+                                                                        // Post nesnesini oluştur ve listeye ekle
+                                                                        if (replyId != null) {
+                                                                            Post post = new Post(id, replyId, metin, image, username, date2, image, likeCount);
+                                                                            postList.add(post);
+                                                                        } else {
+                                                                            Post post = new Post(id, null, metin, image, username, date2, image, likeCount);
+                                                                            postList.add(post);
+                                                                        }
+
+                                                                        adapter.notifyDataSetChanged();
+                                                                    });
                                                         });
                                             }
                                         }
