@@ -8,6 +8,7 @@ import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,7 +51,8 @@ private FirebaseFirestore firebaseFirestore;
     private static final String PREF_NAME = "MyPrefs";
     private static final String KEY_USERNAME = "username";
     public ImageView imageView;
-    public TextView textView ;
+    public TextView textView;
+    public Button btnPostlarim,btnBegendiklerim,btnYanitlarim;
     @SuppressLint("MissingInflatedId")
     @Nullable
     @Override
@@ -73,11 +75,30 @@ private FirebaseFirestore firebaseFirestore;
 
         imageView = view.findViewById(R.id.profilePhoto);
         textView = view.findViewById(R.id.username);
+        view.findViewById(R.id.btnPostlarim).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getData();
+            }
+        });
+        view.findViewById(R.id.btnBegendiklerim).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                begenmelerim();
+            }
+        });
+        btnYanitlarim = view.findViewById(R.id.btnYanitlarim);
 
 
         showPerson(storedUsername);
         getData();
         return view;
+    }
+    public void postlarim(View view){
+        getData();
+    }
+    public void begendiklerim(View view){
+        begenmelerim();
     }
 
     public void showPerson(String storedUsername){
@@ -200,6 +221,66 @@ private FirebaseFirestore firebaseFirestore;
                             }
                         }
                     }
+                });
+    }
+    private void begenmelerim() {
+        String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
+        postList.clear(); // Önceki verileri temizle
+
+        if (getArguments() != null) {
+            storedUsername = getArguments().getString("username");
+        }
+
+        firebaseFirestore.collection("usersLiked")
+                .whereEqualTo("username", storedUsername)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        postList.clear(); // Önceki verileri temizle
+
+
+                        for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
+                            String postId = snapshot.getString("postId"); // Beğenilen gönderinin ID'si
+
+                            // Gönderi detaylarını almak için Post koleksiyonunu sorgula
+                            firebaseFirestore.collection("Post").document(postId)
+                                    .get()
+                                    .addOnSuccessListener(postSnapshot -> {
+                                        if (postSnapshot.exists()) {
+                                            Map<String, Object> postData = postSnapshot.getData();
+                                            if (postData != null) {
+                                                String metin = (String) postData.get("metin");
+                                                String image = (String) postData.get("image");
+                                                String username = (String) postData.get("username");
+                                                Timestamp date = (Timestamp) postData.get("date");
+                                                String date2 = getTimeAgo(date);
+
+                                                // Kullanıcıdan profil fotoğrafını al
+                                                firebaseFirestore.collection("Users").whereEqualTo("username", username)
+                                                        .get()
+                                                        .addOnCompleteListener(userTask -> {
+                                                            String pp = null;
+
+                                                            if (userTask.isSuccessful() && !userTask.getResult().isEmpty()) {
+                                                                DocumentSnapshot userSnapshot = userTask.getResult().getDocuments().get(0);
+                                                                pp = userSnapshot.getString("profilePhoto");
+                                                            }
+
+                                                            // Post nesnesini oluştur ve listeye ekle
+                                                            Post post = new Post(postId, metin, image, username, date2, pp);
+                                                            postList.add(post);
+                                                            adapter.notifyDataSetChanged();
+                                                        });
+                                            }
+                                        }
+                                    });
+                        }
+                    } else {
+                        Toast.makeText(getContext(), "Beğenilen gönderi yok", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Veri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
