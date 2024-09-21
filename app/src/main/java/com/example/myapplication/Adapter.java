@@ -10,12 +10,14 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -63,6 +65,10 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     private static final String PREF_NAME = "MyPrefs";
     private static final String KEY_USERNAME = "username";
 
+
+
+    public String usernameSend,postTextSend,postImageUrl;
+
     public Adapter(Context context, List<Post> postList) {
         this.context = context;
         this.postList = postList;
@@ -78,6 +84,54 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post = postList.get(position);
+        String replyId = post.replyId;
+        if (replyId == null || replyId.isEmpty()){
+            holder.replyedLinearLayout.setVisibility(View.GONE);
+        }
+        else {
+            FirebaseFirestore firebaseFirestore = FirebaseFirestore.getInstance();
+            firebaseFirestore.collection("Post").document(replyId).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            // Firebase'den dönen verileri TextView'lere ve ImageView'e ata
+                            usernameSend = documentSnapshot.getString("username");
+                            postTextSend = documentSnapshot.getString("metin");
+                            postImageUrl = documentSnapshot.getString("image");
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
+                                    .get()
+                                    .addOnCompleteListener(task -> {
+                                        String userpp = null;
+                                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                                            DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
+                                            userpp = userSnapshot.getString("profilePhoto");
+                                            holder.postProfilePhotoSend.setImageDrawable(null);
+                                            Picasso.get().load(userpp).into(holder.postProfilePhotoSend);
+                                        }
+                                    });
+                            // Verileri ilgili alanlara yazdır
+                            holder.usernameSendTextView.setText(usernameSend);
+                            holder.postTextSendTextView.setText(postTextSend);
+
+                            // Resim yüklemek için Glide ya da Picasso gibi kütüphaneler kullanabilirsiniz
+
+                            if (postImageUrl != null) {
+                                holder.postImageSendImageView.setVisibility(View.VISIBLE);
+                                Picasso.get().load(postImageUrl).into(holder.postImageSendImageView);
+                            } else {
+                                holder.postImageSendImageView.setVisibility(View.GONE);
+                            }
+
+                            // replyedLinearLayout'u görünür yap
+                            holder.replyedLinearLayout.setVisibility(View.VISIBLE);
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Firebase'den veri çekilirken hata oluşursa logla
+                        Log.e("FirebaseError", "Reply data could not be retrieved: " + e.getMessage());
+                    });
+
+
+        }
         holder.postText.setText(post.metin);
         holder.username.setText("@" + post.username);
         holder.tarih.setText(post.date);
@@ -121,6 +175,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         // Gönderi metnine tıklama olayı
         holder.postText.setOnClickListener(v -> openPostDetail(post));
 
+
+        holder.replyedLinearLayout.setOnClickListener(v -> openReplyPostDetail(post));
+
         // Gönderi resmine tıklama olayı
         holder.postImage.setOnClickListener(v -> openPostDetail(post));
 
@@ -138,7 +195,6 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
         // Beğen butonuna tıklama olayı
         holder.likeButton.setOnClickListener(v -> {
-            // Firebase kullanıcı oturumu
             sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             String username = sharedPreferences.getString(KEY_USERNAME, null);
 
@@ -157,10 +213,43 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                         }
                     });
         });
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String username = sharedPreferences.getString(KEY_USERNAME, null);
+
+        firebaseFirestore.collection("usersLiked").whereEqualTo("postId", postId)
+                .whereEqualTo("username", username)
+                .get()
+                .addOnCompleteListener(task -> {
+
+                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                        holder.likeButton.setImageResource(R.drawable.heart2);
+                    }
+                    else {
+                        holder.likeButton.setImageResource(R.drawable.heart);
+                    }
+                });
 
 
     }
-    private void likePost(FirebaseFirestore db, String postId, String currentUserId, Button likeButton, Context context) {
+    private void openPostDetail(Post post) {
+        Intent intent = new Intent(context, PostDetay2.class);
+        intent.putExtra("metin", post.metin);
+        intent.putExtra("id", post.id);
+        intent.putExtra("username", post.username);
+        intent.putExtra("date", post.date);
+        intent.putExtra("image", post.image);
+        context.startActivity(intent);
+    }
+    private void openReplyPostDetail(Post post) {
+        Intent intent = new Intent(context, PostDetay2.class);
+        intent.putExtra("metin", postTextSend);
+        intent.putExtra("id", post.replyId);
+        intent.putExtra("username", usernameSend);
+        intent.putExtra("date", "");
+        intent.putExtra("image", postImageUrl);
+        context.startActivity(intent);
+    }
+    private void likePost(FirebaseFirestore db, String postId, String currentUserId, ImageView likeButton, Context context) {
         // Post belgesini güncelle (likeCount değerini 1 artır)
         db.collection("Post").document(postId)
                 .update("likeCount", FieldValue.increment(1))
@@ -172,33 +261,28 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
                     db.collection("usersLiked").add(likeData)
                             .addOnSuccessListener(documentReference -> {
-                                // Beğenme işlemi tamamlandı, buton rengini değiştir
-                                likeButton.setBackgroundColor(context.getResources().getColor(R.color.white)); // liked_color, renk dosyasında tanımlı olmalı
                                 Toast.makeText(context, "Beğenildi", Toast.LENGTH_SHORT).show();
+                                likeButton.setImageResource(R.drawable.heart2); // Değiştirilecek simge
                             });
                 });
     }
 
-    private void unlikePost(FirebaseFirestore db, String postId, String currentUserId, Button likeButton) {
-        // Kullanıcının beğenisini kaldır
+    private void unlikePost(FirebaseFirestore db, String postId, String currentUserId, ImageView likeButton) {
         db.collection("usersLiked")
                 .whereEqualTo("postId", postId)
                 .whereEqualTo("username", currentUserId)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                        // İlk belgede bulunan dokümanı kaldır
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             db.collection("usersLiked").document(document.getId()).delete()
                                     .addOnSuccessListener(aVoid -> {
-                                        // Post belgesini güncelle (likeCount değerini 1 azalt)
                                         db.collection("Post").document(postId)
                                                 .update("likeCount", FieldValue.increment(-1))
                                                 .addOnSuccessListener(aVoid1 -> {
-                                                    // Beğenme işlemi tamamlandı, buton rengini eski hale getir
-                                                    likeButton.setBackgroundColor(context.getResources().getColor(R.color.black)); // default_color, renk dosyasında tanımlı olmalı
+                                                    // Beğeni kaldırıldıktan sonra butonun görselini değiştir
+                                                    likeButton.setImageResource(R.drawable.heart); // beğeni simgesi
                                                     Toast.makeText(context, "Beğeni kaldırıldı", Toast.LENGTH_SHORT).show();
-
                                                 });
                                     });
                         }
@@ -438,15 +522,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         });
     }
 
-    private void openPostDetail(Post post) {
-        Intent intent = new Intent(context, PostDetay2.class);
-        intent.putExtra("metin", post.metin);
-        intent.putExtra("id", post.id);
-        intent.putExtra("username", post.username);
-        intent.putExtra("date", post.date);
-        intent.putExtra("image", post.image);
-        context.startActivity(intent);
-    }
+
 
     @Override
     public int getItemCount() {
@@ -454,9 +530,10 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     }
 
     public static class PostViewHolder extends RecyclerView.ViewHolder {
-        TextView postText, username, tarih, btnBegenmeSayisi;
-        ImageView postImage, PP;
-        Button replyButton, commentButton, likeButton;
+        TextView postText, username, tarih, btnBegenmeSayisi,usernameSendTextView,postTextSendTextView;
+        LinearLayout replyedLinearLayout;
+        ImageView postImage, PP,postImageSendImageView,postProfilePhotoSend,replyButton, commentButton, likeButton;
+
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -472,6 +549,15 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
             commentButton = itemView.findViewById(R.id.btn_comment);
             likeButton = itemView.findViewById(R.id.btn_like);
             btnBegenmeSayisi = itemView.findViewById(R.id.btnBegenmeSayisi);
+
+            replyedLinearLayout = itemView.findViewById(R.id.replyedLinearLayout);
+            usernameSendTextView = itemView.findViewById(R.id.usernameSend);
+            postTextSendTextView = itemView.findViewById(R.id.post_textSend);
+            postImageSendImageView = itemView.findViewById(R.id.post_imageSend);
+            postProfilePhotoSend = itemView.findViewById(R.id.profilePhotoSend);
+
+
+
         }
     }
 }

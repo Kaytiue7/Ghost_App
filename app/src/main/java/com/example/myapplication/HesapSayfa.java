@@ -195,6 +195,8 @@ private FirebaseFirestore firebaseFirestore;
                                     String id = snapshot.getId();
                                     String metin = (String) data.get("metin");
                                     String image = (String) data.get("image");
+                                    String replyId = (String) data.get("repyledPost");
+
                                     String username = (String) data.get("username");
                                     Timestamp date =(Timestamp) data.get("date");
                                     String date2 = getTimeAgo(date);
@@ -211,8 +213,14 @@ private FirebaseFirestore firebaseFirestore;
                                                 }
 
                                                 // Create the Post object and add it to the list
-                                                Post post = new Post(id,metin, image, username, date2, pp);
-                                                postList.add(post);
+                                                if (replyId!=null){
+                                                    Post post = new Post(id,replyId, metin, image, username, date2, image);
+                                                    postList.add(post);
+                                                }
+                                                else{
+                                                    Post post = new Post(id,null, metin, image, username, date2, image);
+                                                    postList.add(post);
+                                                }
                                                 adapter.notifyDataSetChanged();
                                                 swipeRefreshLayout.setRefreshing(false); // Stop refreshing
                                             });
@@ -249,8 +257,10 @@ private FirebaseFirestore firebaseFirestore;
                                         if (postSnapshot.exists()) {
                                             Map<String, Object> postData = postSnapshot.getData();
                                             if (postData != null) {
+                                                String id = snapshot.getId();
                                                 String metin = (String) postData.get("metin");
                                                 String image = (String) postData.get("image");
+                                                String replyId = (String) postData.get("repyledPost");
                                                 String username = (String) postData.get("username");
                                                 Timestamp date = (Timestamp) postData.get("date");
                                                 String date2 = getTimeAgo(date);
@@ -267,8 +277,15 @@ private FirebaseFirestore firebaseFirestore;
                                                             }
 
                                                             // Post nesnesini oluştur ve listeye ekle
-                                                            Post post = new Post(postId, metin, image, username, date2, pp);
-                                                            postList.add(post);
+                                                            if (replyId!=null){
+                                                                Post post = new Post(id,replyId, metin, image, username, date2, image);
+                                                                postList.add(post);
+                                                            }
+                                                            else{
+                                                                Post post = new Post(id,null, metin, image, username, date2, image);
+                                                                postList.add(post);
+                                                            }
+
                                                             adapter.notifyDataSetChanged();
                                                         });
                                             }

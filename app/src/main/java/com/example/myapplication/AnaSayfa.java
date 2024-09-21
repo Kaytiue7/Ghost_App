@@ -106,6 +106,7 @@ public class AnaSayfa extends Fragment {
                                     String metin = (String) data.get("metin");
                                     String image = (String) data.get("image");
                                     String username = (String) data.get("username");
+                                    String replyId = (String) data.get("repyledPost");
                                     Timestamp date = (Timestamp) data.get("date");
                                     String date2 = getTimeAgo(date);
 
@@ -126,8 +127,15 @@ public class AnaSayfa extends Fragment {
                                                 // Liste güncellendikten sonra adapter'i bilgilendirin
                                                 adapter.notifyDataSetChanged();
                                             });
-                                    Post post = new Post(id, metin, image, username, date2, image);
-                                    postList.add(post);
+                                    if (replyId!=null){
+                                        Post post = new Post(id,replyId, metin, image, username, date2, image);
+                                        postList.add(post);
+                                    }
+                                    else{
+                                        Post post = new Post(id,null, metin, image, username, date2, image);
+                                        postList.add(post);
+                                    }
+
                                 }
                             }
                         }
