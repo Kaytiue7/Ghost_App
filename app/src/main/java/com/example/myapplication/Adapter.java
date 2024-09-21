@@ -162,6 +162,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                     if (task.isSuccessful() && task.getResult() != null) {
                         DocumentSnapshot postSnapshot = task.getResult();
                         String likeCount = String.valueOf(postSnapshot.getLong("likeCount")); // Long değerini al
+                        if (likeCount==null){
+                            likeCount="0";
+                        }
                         holder.btnBegenmeSayisi.setText(likeCount); // beğeni sayısını set et
                     }
                 });
@@ -184,7 +187,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         // Cevapla butonuna tıklama olayı
         holder.replyButton.setOnClickListener(v -> {
             // Cevapla işlemini burada yapabilirsiniz
-            SendReply();
+            SendReply(post.id);
         });
 
         // Yorum butonuna tıklama olayı
@@ -304,7 +307,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         fragmentTransaction.commit();
     }
     @SuppressLint({"MissingInflatedId", "WrongViewCast"})
-    private void SendReply() {
+    private void SendReply(String postid) {
         // HesapSayfa fragmentına geçiş kodu
         sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String username = sharedPreferences.getString(KEY_USERNAME, null);
@@ -422,12 +425,12 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
                 gonder.setVisibility(View.GONE);
                 if (selectedPhoto.getVisibility() == View.VISIBLE) {
-                    uploadImageToStorage(text);
+                    uploadImageToStorage(text,postid);
                 } else {
-                    uploadTextToFirestore(text, null);
+                    uploadTextToFirestore(text, null,postid);
                 }
             } else if (selectedPhoto.getVisibility() == View.VISIBLE) {
-                uploadImageToStorage(null);
+                uploadImageToStorage(null,postid);
             }
         });
     }
@@ -436,7 +439,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         ((AppCompatActivity) context).startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
-    private void uploadTextToFirestore(String text, String imageUrl) {
+    private void uploadTextToFirestore(String text, String imageUrl, String postid) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // Retrieve the username from SharedPreferences
@@ -457,7 +460,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         post.put("metin", text);
         post.put("username", username);
         post.put("date", currentTimestamp); // Zaman damgasını ekle
-        post.put("repyledPost", postId);
+        post.put("repyledPost", postid);
 
         if (imageUrl != null) {
             post.put("image", imageUrl);
@@ -493,7 +496,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
     }
 
-    private void uploadImageToStorage(String text) {
+    private void uploadImageToStorage(String text,String postid) {
         FirebaseStorage storage = FirebaseStorage.getInstance();
         StorageReference storageRef = storage.getReference();
         StorageReference postRef = storageRef.child("PostPhoto/" + UUID.randomUUID().toString());
@@ -515,7 +518,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         }).addOnSuccessListener(taskSnapshot -> {
             postRef.getDownloadUrl().addOnSuccessListener(uri -> {
                 String imageUrl = uri.toString();
-                uploadTextToFirestore(text, imageUrl);
+                uploadTextToFirestore(text, imageUrl,postid);
             });
         }).addOnFailureListener(exception -> {
 
