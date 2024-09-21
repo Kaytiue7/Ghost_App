@@ -109,6 +109,14 @@
             android:text="Beğen"
             android:textColor="@color/white"
             android:background="@color/black" />
+
+        <TextView
+            android:id="@+id/btnBegenmeSayisi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/white"
+            android:text="0" />
     </LinearLayout>
     <View
         android:layout_width="match_parent"

@@ -30,7 +30,9 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -79,7 +81,6 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         holder.postText.setText(post.metin);
         holder.username.setText("@" + post.username);
         holder.tarih.setText(post.date);
-
         if (post.image != null) {
             holder.postImage.setVisibility(View.VISIBLE);
             Picasso.get().load(post.image).into(holder.postImage);
@@ -99,6 +100,15 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                         pp = userSnapshot.getString("profilePhoto");
                         holder.PP.setImageDrawable(null);
                         Picasso.get().load(pp).into(holder.PP);
+                    }
+                });
+        firebaseFirestore.collection("Post").document(post.id)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        DocumentSnapshot postSnapshot = task.getResult();
+                        String likeCount = String.valueOf(postSnapshot.getLong("likeCount")); // Long değerini al
+                        holder.btnBegenmeSayisi.setText("Beğeni Sayısı: "+likeCount); // beğeni sayısını set et
                     }
                 });
 
@@ -128,10 +138,74 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
         // Beğen butonuna tıklama olayı
         holder.likeButton.setOnClickListener(v -> {
-            // Beğenme işlemini burada yapabilirsiniz
+            // Firebase kullanıcı oturumu
+            sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            String username = sharedPreferences.getString(KEY_USERNAME, null);
 
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+            // Postun beğenilip beğenilmediğini kontrol et
+            db.collection("usersLiked").whereEqualTo("postId", post.id).whereEqualTo("username", username)
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                            // Kullanıcı postu daha önce beğenmiş
+                            unlikePost(db, post.id, username, holder.likeButton);
+                        } else {
+                            // Kullanıcı postu henüz beğenmemiş
+                            likePost(db, post.id, username, holder.likeButton, context);
+                        }
+                    });
         });
+
+
     }
+    private void likePost(FirebaseFirestore db, String postId, String currentUserId, Button likeButton, Context context) {
+        // Post belgesini güncelle (likeCount değerini 1 artır)
+        db.collection("Post").document(postId)
+                .update("likeCount", FieldValue.increment(1))
+                .addOnSuccessListener(aVoid -> {
+                    // Beğenme işlemi Firestore'a kaydedildi, kullanıcıyı ve postu 'usersLiked' koleksiyonuna ekle
+                    Map<String, Object> likeData = new HashMap<>();
+                    likeData.put("postId", postId);
+                    likeData.put("username", currentUserId);
+
+                    db.collection("usersLiked").add(likeData)
+                            .addOnSuccessListener(documentReference -> {
+                                // Beğenme işlemi tamamlandı, buton rengini değiştir
+                                likeButton.setBackgroundColor(context.getResources().getColor(R.color.white)); // liked_color, renk dosyasında tanımlı olmalı
+                                Toast.makeText(context, "Beğenildi", Toast.LENGTH_SHORT).show();
+                            });
+                });
+    }
+
+    private void unlikePost(FirebaseFirestore db, String postId, String currentUserId, Button likeButton) {
+        // Kullanıcının beğenisini kaldır
+        db.collection("usersLiked")
+                .whereEqualTo("postId", postId)
+                .whereEqualTo("username", currentUserId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                        // İlk belgede bulunan dokümanı kaldır
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            db.collection("usersLiked").document(document.getId()).delete()
+                                    .addOnSuccessListener(aVoid -> {
+                                        // Post belgesini güncelle (likeCount değerini 1 azalt)
+                                        db.collection("Post").document(postId)
+                                                .update("likeCount", FieldValue.increment(-1))
+                                                .addOnSuccessListener(aVoid1 -> {
+                                                    // Beğenme işlemi tamamlandı, buton rengini eski hale getir
+                                                    likeButton.setBackgroundColor(context.getResources().getColor(R.color.black)); // default_color, renk dosyasında tanımlı olmalı
+                                                    Toast.makeText(context, "Beğeni kaldırıldı", Toast.LENGTH_SHORT).show();
+
+                                                });
+                                    });
+                        }
+                    }
+                });
+    }
+
 
     private void openProfilePage(String username) {
         // HesapSayfa fragmentına geçiş kodu
@@ -380,7 +454,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     }
 
     public static class PostViewHolder extends RecyclerView.ViewHolder {
-        TextView postText, username, tarih;
+        TextView postText, username, tarih, btnBegenmeSayisi;
         ImageView postImage, PP;
         Button replyButton, commentButton, likeButton;
 
@@ -392,10 +466,12 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
             username = itemView.findViewById(R.id.username);
             tarih = itemView.findViewById(R.id.tarih);
 
+
             // Butonları tanımlıyoruz
             replyButton = itemView.findViewById(R.id.btn_reply);
             commentButton = itemView.findViewById(R.id.btn_comment);
             likeButton = itemView.findViewById(R.id.btn_like);
+            btnBegenmeSayisi = itemView.findViewById(R.id.btnBegenmeSayisi);
         }
     }
 }

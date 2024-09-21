@@ -257,7 +257,8 @@ public class MainActivity extends AppCompatActivity {
                 Map<String, Object> post = new HashMap<>();
                 post.put("metin", text);
                 post.put("username", username);
-                post.put("date", currentTimestamp); // Zaman damgasını ekle
+                post.put("date", currentTimestamp);// Zaman damgasını ekle
+                post.put("likeCount", 0);
 
 
                 if (imageUrl != null) {
