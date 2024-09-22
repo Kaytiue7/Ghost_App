@@ -89,6 +89,13 @@
         android:layout_width="145dp"
         android:layout_height="wrap_content"
         android:text="Gönder" />
+
+    <Button
+        android:id="@+id/cameraButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Kamera" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="match_parent"

@@ -5,8 +5,10 @@ import static java.security.AccessController.getContext;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -59,9 +61,11 @@ import java.util.UUID;
 public class MainActivity extends AppCompatActivity {
 
     private static final int PICK_IMAGE_REQUEST = 1;
+    private static final int CAMERA_REQUEST = 2;
+
 
     private ImageView selectPhotoButton, imageView,delete,selectedPhoto;
-    private Button gonder;
+    private Button gonder,cameraButton;
     private EditText editText;
     private TextView textView;
     private ProgressBar progressBar;
@@ -78,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         // Firebase Authentication'dan mevcut kullanıcıyı al
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
@@ -98,19 +103,35 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.add) {
                 send();
             } else if (itemId == R.id.message) {
-               // replaceFragment(new MesajSayfa());
                 clearLocalDatabase();
-
             } else if (itemId == R.id.account) {
                 replaceFragment(new HesapSayfa());
             }
             return true;
         });
-
-
-
-
     }
+
+    private void openCamera() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
+        } else {
+            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            startActivityForResult(cameraIntent, CAMERA_REQUEST);
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == CAMERA_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                openCamera();
+            } else {
+                Toast.makeText(this, "Kamera izni gereklidir.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
     private void clearLocalDatabase() {
         // SharedPreferences'i temizle
         SharedPreferences sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -137,58 +158,51 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("MissingInflatedId")
     public void send() {
-
         SharedPreferences sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String username = sharedPreferences.getString(KEY_USERNAME, null);
 
-
-
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         LayoutInflater inflater = getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.yukleme_ekran, null); // Ensure your layout file name is correct
+        View dialogView = inflater.inflate(R.layout.yukleme_ekran, null); // dialogView burada tanımlanıyor
         builder.setView(dialogView);
 
+        // dialogView'den bileşenleri buradan tanımlıyoruz
         ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
         selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
         selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
+        Button cameraButton = dialogView.findViewById(R.id.cameraButton); // Burada dialogView üzerinden erişiyoruz
         editText = dialogView.findViewById(R.id.editText);
         gonder = dialogView.findViewById(R.id.gonder);
         delete = dialogView.findViewById(R.id.delete);
         textView = dialogView.findViewById(R.id.textView);
-        imageView= dialogView.findViewById(R.id.imageView);
-        progressBar= dialogView.findViewById(R.id.progressBar);
+        imageView = dialogView.findViewById(R.id.imageView);
+        progressBar = dialogView.findViewById(R.id.progressBar);
 
-
-
+        // Kullanıcı bilgilerini Firestore'dan al
         firebaseFirestore.collection("Users").whereEqualTo("username", username)
                 .get()
-                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-                    @Override
-                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                        for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
-                            if (snapshot.exists()) {
-                                Map<String, Object> data = snapshot.getData();
-                                String username = (String) data.get("username");
-                                String ProfilePicture = (String) data.get("profilePhoto");
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
+                        if (snapshot.exists()) {
+                            Map<String, Object> data = snapshot.getData();
+                            String usernameFetched = (String) data.get("username");
+                            String ProfilePicture = (String) data.get("profilePhoto");
 
-                                textView.setText("@"+username);
-                                if (ProfilePicture!=null){
-                                    Picasso.get().load(ProfilePicture).into(imageView);
-
-                                }
-                                else {
-                                    imageView.setImageResource(R.drawable.my_account);
-                                }
-
+                            textView.setText("@" + usernameFetched);
+                            if (ProfilePicture != null) {
+                                Picasso.get().load(ProfilePicture).into(imageView);
+                            } else {
+                                imageView.setImageResource(R.drawable.my_account);
                             }
                         }
                     }
                 });
 
         selectPhotoButton.setOnClickListener(v -> openGallery());
+        cameraButton.setOnClickListener(v -> openCamera());
 
         delete.setOnClickListener(v -> {
-            selectedPhoto.setImageResource(0); // Clear the image
+            selectedPhoto.setImageResource(0);
             selectedPhoto.setVisibility(View.GONE);
             delete.setVisibility(View.GONE);
             selectPhotoButton.setVisibility(View.VISIBLE);
@@ -197,7 +211,6 @@ public class MainActivity extends AppCompatActivity {
         gonder.setOnClickListener(v -> {
             String text = editText.getText().toString().trim();
             if (!text.isEmpty()) {
-
                 gonder.setVisibility(View.GONE);
                 if (selectedPhoto.getVisibility() == View.VISIBLE) {
                     uploadImageToStorage(text);
@@ -213,6 +226,10 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+
+
+
+
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
@@ -222,20 +239,29 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri imageUri = data.getData();
-            try {
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                selectedPhoto.setImageBitmap(bitmap);
+        if (resultCode == RESULT_OK) {
+            if (requestCode == PICK_IMAGE_REQUEST && data != null && data.getData() != null) {
+                Uri imageUri = data.getData();
+                try {
+                    InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    selectedPhoto.setImageBitmap(bitmap);
+                    selectedPhoto.setVisibility(View.VISIBLE);
+                    delete.setVisibility(View.VISIBLE);
+                    selectPhotoButton.setVisibility(View.GONE);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+                }
+            } else if (requestCode == CAMERA_REQUEST) {
+                Bitmap photo = (Bitmap) data.getExtras().get("data");
+                selectedPhoto.setImageBitmap(photo);
                 selectedPhoto.setVisibility(View.VISIBLE);
                 delete.setVisibility(View.VISIBLE);
                 selectPhotoButton.setVisibility(View.GONE);
-            } catch (Exception e) {
-                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
             }
         }
     }
+
 
     private void uploadTextToFirestore(String text, String imageUrl) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
