@@ -59,6 +59,27 @@
             android:visibility="visible"
             android:text="username"
             android:textColor="@color/white"/>
+
+        <TextView
+            android:id="@+id/takipciSayisiTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/takipEtmeSayisiTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btnTakipEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="TakipEt"
+            android:text="Takip Et" />
     </LinearLayout>
 
 

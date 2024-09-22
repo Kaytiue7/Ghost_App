@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,14 +26,17 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.squareup.picasso.Picasso;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,16 +47,15 @@ public class HesapSayfa extends Fragment {
     private Adapter adapter;
     private List<Post> postList;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private static String pp=null;
-    private static String  date =null;
-private FirebaseFirestore firebaseFirestore;
+    private FirebaseFirestore firebaseFirestore;
 
     private SharedPreferences sharedPreferences;
     private static final String PREF_NAME = "MyPrefs";
     private static final String KEY_USERNAME = "username";
     public ImageView imageView;
-    public TextView textView;
-    public Button btnPostlarim,btnBegendiklerim,btnYanitlarim;
+    public TextView textView,takipciSayisiTextView, takipEtmeSayisiTextView;
+    public Button btnPostlarim, btnBegendiklerim, btnYanitlarim, btnTakipEt;
+
     @SuppressLint("MissingInflatedId")
     @Nullable
     @Override
@@ -60,14 +63,14 @@ private FirebaseFirestore firebaseFirestore;
         View view = inflater.inflate(R.layout.fragment_hesap_sayfa, container, false);
         sharedPreferences = getActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
-
         recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         firebaseFirestore = FirebaseFirestore.getInstance();
         postList = new ArrayList<>();
         adapter = new Adapter(getContext(), postList);
         recyclerView.setAdapter(adapter);
-
+        takipciSayisiTextView = view.findViewById(R.id.takipciSayisiTextView);
+        takipEtmeSayisiTextView = view.findViewById(R.id.takipEtmeSayisiTextView);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
         swipeRefreshLayout.setOnRefreshListener(this::getData);
 
@@ -75,66 +78,112 @@ private FirebaseFirestore firebaseFirestore;
 
         imageView = view.findViewById(R.id.profilePhoto);
         textView = view.findViewById(R.id.username);
-        view.findViewById(R.id.btnPostlarim).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getData();
-            }
-        });
-        view.findViewById(R.id.btnBegendiklerim).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                begenmelerim();
-            }
-        });
+        btnPostlarim = view.findViewById(R.id.btnPostlarim);
+        btnBegendiklerim = view.findViewById(R.id.btnBegendiklerim);
         btnYanitlarim = view.findViewById(R.id.btnYanitlarim);
+        btnTakipEt = view.findViewById(R.id.btnTakipEt);
+        btnTakipEt.setOnClickListener(this::TakipEt);
 
+        btnPostlarim.setOnClickListener(v -> getData());
+        btnBegendiklerim.setOnClickListener(v -> begenmelerim());
+        String currentUserId = sharedPreferences.getString(KEY_USERNAME, null);
+        String targetUserId = getArguments() != null ? getArguments().getString("username") : null;
+        if (currentUserId.equals(targetUserId)) {
+            btnTakipEt.setEnabled(false); // Butonu devre dışı bırak
+            btnTakipEt.setVisibility(View.GONE); // İstersen butonu tamamen gizleyebilirsin
+        } else {
+            checkFollowingStatus(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, isFollowing -> {
+                // Takip durumu kontrolü tamamlandığında yapılacak işlemler
+                btnTakipEt.setText(isFollowing ? "Takibi Bırak" : "Takip Et");
+            });
+        }
 
         showPerson(storedUsername);
         getData();
         return view;
     }
-    public void postlarim(View view){
-        getData();
-    }
-    public void begendiklerim(View view){
-        begenmelerim();
+
+    // Takip etme işlemleri
+
+    private void TakipEt(View view) {
+        String currentUserId = sharedPreferences.getString(KEY_USERNAME, null);
+        String targetUserId = getArguments() != null ? getArguments().getString("username") : null;
+
+        // Kullanıcının takip edip etmediğini kontrol et
+        checkFollowingStatus(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, isFollowing -> {
+            // Takip etme veya takipten çıkma işlemini yap
+            followUser(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, getContext(), isFollowing);
+        });
+
     }
 
-    public void showPerson(String storedUsername){
-
+    private void showPerson(String storedUsername) {
         if (getArguments() != null) {
             storedUsername = getArguments().getString("username");
         }
 
         firebaseFirestore.collection("Users").whereEqualTo("username", storedUsername)
                 .get()
-                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-                    @Override
-                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                        for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
-                            if (snapshot.exists()) {
-                                Map<String, Object> data = snapshot.getData();
-                                String username = (String) data.get("username");
-                                String ProfilePicture = (String) data.get("profilePhoto");
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
+                        if (snapshot.exists()) {
+                            Map<String, Object> data = snapshot.getData();
+                            String username = (String) data.get("username");
+                            String profilePicture = (String) data.get("profilePhoto");
+                            Long takipciSayisi = (Long) data.get("Takipçi "+"takipciSayisi");
+                            Long takipEtmeSayisi = (Long) data.get("Takip "+"takipEtmeSayisi");
 
-                                textView.setText("@"+username);
-                                if (ProfilePicture!=null){
-                                    Picasso.get().load(ProfilePicture).into(imageView);
-
-                                }
-                                else {
-                                    imageView.setImageResource(R.drawable.my_account);
-                                }
-
+                            textView.setText("@" + username);
+                            if (profilePicture != null) {
+                                Picasso.get().load(profilePicture).into(imageView);
+                            } else {
+                                imageView.setImageResource(R.drawable.my_account);
                             }
+
+                            // Takipçi ve takip etme sayılarını göster
+                            takipciSayisiTextView.setText(takipciSayisi != null ? takipciSayisi.toString() : "0");
+                            takipEtmeSayisiTextView.setText(takipEtmeSayisi != null ? takipEtmeSayisi.toString() : "0");
                         }
                     }
                 })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Toast.makeText(getContext(), "Veri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                .addOnFailureListener(e -> Toast.makeText(getContext(), "Veri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+
+    private void getData() {
+        String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
+        if (getArguments() != null) {
+            storedUsername = getArguments().getString("username");
+        }
+
+        firebaseFirestore.collection("Post")
+                .orderBy("date", Query.Direction.DESCENDING)
+                .whereEqualTo("username", storedUsername)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
+                        return;
+                    }
+
+                    if (value != null) {
+                        postList.clear(); // Clear the list before adding new data
+                        for (DocumentSnapshot snapshot : value.getDocuments()) {
+                            Map<String, Object> data = snapshot.getData();
+                            if (data != null) {
+                                String id = snapshot.getId();
+                                String metin = (String) data.get("metin");
+                                String image = (String) data.get("image");
+                                String replyId = (String) data.get("repyledPost");
+                                String username = (String) data.get("username");
+                                Timestamp date = (Timestamp) data.get("date");
+                                String date2 = getTimeAgo(date);
+
+                                Post post = new Post(id, replyId, metin, image, username, date2, image, 0);
+                                postList.add(post);
+                            }
+                        }
+                        adapter.notifyDataSetChanged();
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
                     }
                 });
     }
@@ -144,93 +193,23 @@ private FirebaseFirestore firebaseFirestore;
         long now = System.currentTimeMillis();
         long diff = now - time;
 
-        if (diff < android.text.format.DateUtils.HOUR_IN_MILLIS) {
-            // Less than an hour, show in minutes
-            return (diff / android.text.format.DateUtils.MINUTE_IN_MILLIS) + " dakika önce";
-        } else if (diff < android.text.format.DateUtils.DAY_IN_MILLIS) {
-            // Less than a day, show in hours
-            long hours = diff / android.text.format.DateUtils.HOUR_IN_MILLIS;
+        if (diff < DateUtils.HOUR_IN_MILLIS) {
+            return (diff / DateUtils.MINUTE_IN_MILLIS) + " dakika önce";
+        } else if (diff < DateUtils.DAY_IN_MILLIS) {
+            long hours = diff / DateUtils.HOUR_IN_MILLIS;
             return hours + " saat önce";
-        } else if (diff < android.text.format.DateUtils.WEEK_IN_MILLIS) {
-            // Less than a week, show in days
-            long days = diff / android.text.format.DateUtils.DAY_IN_MILLIS;
+        } else if (diff < DateUtils.WEEK_IN_MILLIS) {
+            long days = diff / DateUtils.DAY_IN_MILLIS;
             return days + " gün önce";
-        } else if (diff < 56 * android.text.format.DateUtils.WEEK_IN_MILLIS) {
-            // Less than 56 weeks, show in weeks
+        } else if (diff < 56 * DateUtils.WEEK_IN_MILLIS) {
             long weeks = diff / DateUtils.WEEK_IN_MILLIS;
             return weeks + " hafta önce";
         } else {
-            // More than 56 weeks, show the date in "dd.MM.yyyy" format
             SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
             return sdf.format(timestamp.toDate());
         }
     }
 
-    private void getData() {
-
-        String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
-
-        if (getArguments() != null) {
-            storedUsername = getArguments().getString("username");
-        }
-
-        firebaseFirestore.collection("Post")
-                .orderBy("date", Query.Direction.DESCENDING)
-                .whereEqualTo("username", storedUsername)
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
-                        if (error != null) {
-                            //Toast.makeText(getContext(), "Error: " + error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                            swipeRefreshLayout.setRefreshing(false); // Stop refreshing
-                            return;
-                        }
-
-                        if (value != null) {
-                            postList.clear(); // Clear the list before adding new data
-
-                            for (DocumentSnapshot snapshot : value.getDocuments()) {
-                                Map<String, Object> data = snapshot.getData();
-                                if (data != null) {
-                                    String id = snapshot.getId();
-                                    String metin = (String) data.get("metin");
-                                    String image = (String) data.get("image");
-                                    String replyId = (String) data.get("repyledPost");
-
-                                    String username = (String) data.get("username");
-                                    Timestamp date =(Timestamp) data.get("date");
-                                    String date2 = getTimeAgo(date);
-
-                                    // Fetch the profilePhoto for the username
-                                    firebaseFirestore.collection("Users").whereEqualTo("username", username)
-                                            .get()
-                                            .addOnCompleteListener(task -> {
-                                                String pp = null; // Profile photo başlangıçta null
-
-                                                if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                                                    DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
-                                                    pp = userSnapshot.getString("profilePhoto");
-                                                }
-
-                                                // Create the Post object and add it to the list
-                                                if (replyId!=null){
-                                                    Post post = new Post(id,replyId, metin, image, username, date2, image, 0);
-                                                    postList.add(post);
-                                                }
-                                                else{
-                                                    Post post = new Post(id,null, metin, image, username, date2, image, 0);
-                                                    postList.add(post);
-                                                }
-                                                adapter.notifyDataSetChanged();
-                                                swipeRefreshLayout.setRefreshing(false); // Stop refreshing
-                                            });
-
-                                }
-                            }
-                        }
-                    }
-                });
-    }
     private void begenmelerim() {
         String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
         postList.clear(); // Önceki verileri temizle
@@ -244,8 +223,6 @@ private FirebaseFirestore firebaseFirestore;
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
-                        postList.clear(); // Önceki verileri temizle
-
                         for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
                             String postId = snapshot.getString("postId"); // Beğenilen gönderinin ID'si
 
@@ -264,54 +241,136 @@ private FirebaseFirestore firebaseFirestore;
                                                 Timestamp date = (Timestamp) postData.get("date");
                                                 String date2 = getTimeAgo(date);
 
-                                                // Beğeni sayısını almak için usersLiked koleksiyonunu sorgula
-                                                firebaseFirestore.collection("usersLiked")
-                                                        .whereEqualTo("postId", postId)
-                                                        .get()
-                                                        .addOnSuccessListener(likesSnapshot -> {
-                                                            int likeCount = likesSnapshot.size(); // Beğeni sayısını al
+                                                // Post nesnesini oluştur ve listeye ekle
+                                                Post post = new Post(id, replyId, metin, image, username, date2, image, 0);
+                                                postList.add(post);
 
-                                                            // Kullanıcıdan profil fotoğrafını al
-                                                            firebaseFirestore.collection("Users").whereEqualTo("username", username)
-                                                                    .get()
-                                                                    .addOnCompleteListener(userTask -> {
-                                                                        String pp = null;
-
-                                                                        if (userTask.isSuccessful() && !userTask.getResult().isEmpty()) {
-                                                                            DocumentSnapshot userSnapshot = userTask.getResult().getDocuments().get(0);
-                                                                            pp = userSnapshot.getString("profilePhoto");
-                                                                        }
-
-                                                                        // Post nesnesini oluştur ve listeye ekle
-                                                                        if (replyId != null) {
-                                                                            Post post = new Post(id, replyId, metin, image, username, date2, image, likeCount);
-                                                                            postList.add(post);
-                                                                        } else {
-                                                                            Post post = new Post(id, null, metin, image, username, date2, image, likeCount);
-                                                                            postList.add(post);
-                                                                        }
-
-                                                                        adapter.notifyDataSetChanged();
-                                                                    });
-                                                        });
+                                                adapter.notifyDataSetChanged();
                                             }
                                         }
                                     });
                         }
-                    } else {
-                        Toast.makeText(getContext(), "Beğenilen gönderi yok", Toast.LENGTH_SHORT).show();
                     }
                 })
+                .addOnFailureListener(e -> Toast.makeText(getContext(), "Beğenilen gönderileri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void followUser(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, Context context, boolean isFollowing) {
+        Map<String, Object> followData = new HashMap<>();
+        followData.put("follower", currentUserId);
+
+        if (isFollowing) {
+            // Takipten çık
+            firestore.collection("Following").document(currentUserId)
+                    .collection("following").document(targetUserId)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        followButton.setText("Takip Et");
+                        Toast.makeText(context, "Takipten çıkıldı!", Toast.LENGTH_SHORT).show();
+                        updateFollowCount(firestore, currentUserId, targetUserId, -1); // -1 ile azalt
+                    })
+                    .addOnFailureListener(e -> showError(context, "Takipten çıkarma hatası: " + e.getMessage()));
+        } else {
+            // Takip et
+            firestore.collection("Following").document(currentUserId)
+                    .collection("following").document(targetUserId)
+                    .set(followData)
+                    .addOnSuccessListener(aVoid -> {
+                        followButton.setText("Takibi Bırak");
+                        Toast.makeText(context, "Takip ediliyor!", Toast.LENGTH_SHORT).show();
+                        updateFollowCount(firestore, currentUserId, targetUserId, 1); // 1 ile artır
+                    })
+                    .addOnFailureListener(e -> showError(context, "Takip hatası: " + e.getMessage()));
+        }
+    }
+
+    private void updateFollowCount(FirebaseFirestore firestore, String currentUserId, String targetUserId, int increment) {
+        // Öncelikle, hedef kullanıcının belgesinin varlığını kontrol et
+        firestore.collection("Users").document(targetUserId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // Takip edilen kullanıcının takipçi sayısını güncelle
+                        firestore.collection("Users").document(targetUserId)
+                                .update("takipciSayisi", FieldValue.increment(increment))
+                                .addOnSuccessListener(aVoid -> Log.d("FollowCount", "Takipçi sayısı güncellendi: " + increment))
+                                .addOnFailureListener(e -> Log.e("FollowCount", "Takipçi sayısı güncellenirken hata: " + e.getMessage()));
+                    } else {
+                        Log.e("FollowCount", "Hedef kullanıcı belgesi bulunamadı: " + targetUserId);
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("FollowCount", "Kullanıcı belgesini alma hatası: " + e.getMessage()));
+
+        // Takip eden kullanıcının takip sayısını güncelle
+        firestore.collection("Users").document(currentUserId)
+                .update("takipSayisi", FieldValue.increment(increment))
+                .addOnSuccessListener(aVoid -> Log.d("FollowCount", "Takip sayısı güncellendihyhy: " + increment))
+                .addOnFailureListener(e -> Log.e("FollowCount", "Takip sayısı güncellenirken hatayhy: " + e.getMessage()));
+    }
+
+
+
+
+
+    private void showError(Context context, String message) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+    }
+
+
+
+    private void unfollowUser(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, Context context) {
+        firestore.collection("Following").document(currentUserId)
+                .collection("following").document(targetUserId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    followButton.setText("Takip Et");
+                    Toast.makeText(context, "Takipten çıkıldı!", Toast.LENGTH_SHORT).show();
+
+                    // Takip edilen kullanıcının takipçi sayısını azalt
+                    firestore.collection("Users").document(targetUserId)
+                            .update("takipciSayisi", FieldValue.increment(-1));
+
+                    // Takip eden kullanıcının takip etme sayısını azalt
+                    firestore.collection("Users").document(currentUserId)
+                            .update("takipEtmeSayisi", FieldValue.increment(-1));
+                })
+                .addOnFailureListener(e -> Toast.makeText(context, "Takipten çıkarma hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+
+    private void checkFollowingStatus(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, OnCheckFollowingStatusListener listener) {
+        if (currentUserId == null || targetUserId == null) {
+            Log.e("HesapSayfa", "User IDs cannot be null");
+            followButton.setEnabled(false);
+            return;
+        }
+
+        // Kendini takip edemezsin kontrolü
+        if (currentUserId.equals(targetUserId)) {
+            Toast.makeText(getContext(), "Kendini takip edemezsin", Toast.LENGTH_SHORT).show();
+            followButton.setEnabled(false);
+            return;
+        }
+
+        // Takip durumu kontrolü
+        firestore.collection("Following").document(currentUserId)
+                .collection("following").document(targetUserId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    boolean isFollowing = documentSnapshot.exists();
+                    followButton.setText(isFollowing ? "Takibi Bırak" : "Takip Et");
+                    listener.onCheckComplete(isFollowing);
+                })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Veri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                    followButton.setText("Takip Et");
+                    listener.onCheckComplete(false);
                 });
+
+    }
+    interface OnCheckFollowingStatusListener {
+        void onCheckComplete(boolean isFollowing);
     }
 
 
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        // Cleanup if needed
-    }
 }
