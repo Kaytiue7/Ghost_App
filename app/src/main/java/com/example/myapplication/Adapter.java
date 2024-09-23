@@ -259,6 +259,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                 .addOnSuccessListener(aVoid -> {
                     // Beğenme işlemi Firestore'a kaydedildi, kullanıcıyı ve postu 'usersLiked' koleksiyonuna ekle
                     Map<String, Object> likeData = new HashMap<>();
+                    Date currentDate = new Date();
+                    Timestamp currentTimestamp = new Timestamp(currentDate);
+                    likeData.put("date", currentTimestamp);
                     likeData.put("postId", postId);
                     likeData.put("username", currentUserId);
 

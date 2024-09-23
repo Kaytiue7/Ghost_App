@@ -21,21 +21,16 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.squareup.picasso.Picasso;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,8 +48,11 @@ public class HesapSayfa extends Fragment {
     private static final String PREF_NAME = "MyPrefs";
     private static final String KEY_USERNAME = "username";
     public ImageView imageView;
-    public TextView textView,takipciSayisiTextView, takipEtmeSayisiTextView;
+    public TextView textView,followerTextView, followedTextView;
     public Button btnPostlarim, btnBegendiklerim, btnYanitlarim, btnTakipEt;
+    public String anlik_sayfa="AnaSayfa";
+
+    public String username;
 
     @SuppressLint("MissingInflatedId")
     @Nullable
@@ -69,10 +67,18 @@ public class HesapSayfa extends Fragment {
         postList = new ArrayList<>();
         adapter = new Adapter(getContext(), postList);
         recyclerView.setAdapter(adapter);
-        takipciSayisiTextView = view.findViewById(R.id.takipciSayisiTextView);
-        takipEtmeSayisiTextView = view.findViewById(R.id.takipEtmeSayisiTextView);
+        followerTextView = view.findViewById(R.id.followerTextView);
+        followedTextView = view.findViewById(R.id.followedTextView);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
-        swipeRefreshLayout.setOnRefreshListener(this::getData);
+
+        if ( anlik_sayfa=="AnaSayfa"){
+            swipeRefreshLayout.setOnRefreshListener(this::getData);
+
+        }
+        if ( anlik_sayfa=="Begenmelerim"){
+            swipeRefreshLayout.setOnRefreshListener(this::begenmelerim);
+
+        }
 
         String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
 
@@ -82,21 +88,28 @@ public class HesapSayfa extends Fragment {
         btnBegendiklerim = view.findViewById(R.id.btnBegendiklerim);
         btnYanitlarim = view.findViewById(R.id.btnYanitlarim);
         btnTakipEt = view.findViewById(R.id.btnTakipEt);
-        btnTakipEt.setOnClickListener(this::TakipEt);
+        btnTakipEt.setOnClickListener(this::FollowOrUnfollow);
 
-        btnPostlarim.setOnClickListener(v -> getData());
-        btnBegendiklerim.setOnClickListener(v -> begenmelerim());
-        String currentUserId = sharedPreferences.getString(KEY_USERNAME, null);
-        String targetUserId = getArguments() != null ? getArguments().getString("username") : null;
-        if (currentUserId.equals(targetUserId)) {
-            btnTakipEt.setEnabled(false); // Butonu devre dışı bırak
-            btnTakipEt.setVisibility(View.GONE); // İstersen butonu tamamen gizleyebilirsin
-        } else {
-            checkFollowingStatus(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, isFollowing -> {
-                // Takip durumu kontrolü tamamlandığında yapılacak işlemler
-                btnTakipEt.setText(isFollowing ? "Takibi Bırak" : "Takip Et");
-            });
-        }
+
+
+        btnBegendiklerim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                anlik_sayfa="Begenmelerim";
+                begenmelerim();
+            }
+        });
+
+        btnPostlarim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                anlik_sayfa="AnaSayfa";
+                getData();
+            }
+        });
+
+        showFollowerCount();
+
 
         showPerson(storedUsername);
         getData();
@@ -104,16 +117,167 @@ public class HesapSayfa extends Fragment {
     }
 
     // Takip etme işlemleri
+        public void showFollowerCount(){
+            String myUsername = sharedPreferences.getString(KEY_USERNAME, null);
+            String profilPageUsername = getArguments() != null ? getArguments().getString("username") : null;
+            if (myUsername.equals(profilPageUsername)) {
+                btnTakipEt.setVisibility(View.GONE);
 
-    private void TakipEt(View view) {
-        String currentUserId = sharedPreferences.getString(KEY_USERNAME, null);
-        String targetUserId = getArguments() != null ? getArguments().getString("username") : null;
 
-        // Kullanıcının takip edip etmediğini kontrol et
-        checkFollowingStatus(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, isFollowing -> {
-            // Takip etme veya takipten çıkma işlemini yap
-            followUser(firebaseFirestore, currentUserId, targetUserId, btnTakipEt, getContext(), isFollowing);
-        });
+                firebaseFirestore.collection("UserFollow")
+                        .whereEqualTo("FollowedTo", myUsername)
+                        .get()
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                // Takipçi sayısını al
+                                int followerCount = task.getResult().size();
+
+                                // followerTextView'e takipçi sayısını yazdır
+
+                                followerTextView.setText("Takipçi Sayısı: " + followerCount);
+                            } else {
+                                Log.w("Firebase", "Veri çekme hatası", task.getException());
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.w("Firebase", "Sorgu hatası", e);
+                        });
+
+                firebaseFirestore.collection("UserFollow")
+                        .whereEqualTo("FollowedFrom", myUsername)
+                        .get()
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                // Takipçi sayısını al
+                                int followerCount = task.getResult().size();
+
+                                // followerTextView'e takipçi sayısını yazdır
+
+                                followedTextView.setText("Takip Edilen Sayısı: " + followerCount);
+                            } else {
+                                Log.w("Firebase", "Veri çekme hatası", task.getException());
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.w("Firebase", "Sorgu hatası", e);
+                        });
+            } else {
+
+                    firebaseFirestore.collection("UserFollow")
+                            .whereEqualTo("FollowedTo", profilPageUsername)
+                            .get()
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    // Takipçi sayısını al
+                                    int followerCount = task.getResult().size();
+
+                                    // followerTextView'e takipçi sayısını yazdır
+
+                                    followerTextView.setText("Takipçi Sayısı: " + followerCount);
+                                } else {
+                                    Log.w("Firebase", "Veri çekme hatası", task.getException());
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                Log.w("Firebase", "Sorgu hatası", e);
+                            });
+
+
+                firebaseFirestore.collection("UserFollow")
+                        .whereEqualTo("FollowedFrom", profilPageUsername)
+                        .get()
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                // Takipçi sayısını al
+                                int followerCount = task.getResult().size();
+
+                                // followerTextView'e takipçi sayısını yazdır
+
+                                followedTextView.setText("Takip Edilen Sayısı: " + followerCount);
+                            } else {
+                                Log.w("Firebase", "Veri çekme hatası", task.getException());
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.w("Firebase", "Sorgu hatası", e);
+                        });
+
+
+            }
+
+            firebaseFirestore.collection("UserFollow")
+                    .whereEqualTo("FollowedFrom", myUsername)
+                    .whereEqualTo("FollowedTo", profilPageUsername)
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                            // Eğer takip ediyorsa
+                            btnTakipEt.setText("Takibi Bırak");
+                        } else {
+                            // Takip etmiyorsa
+                            btnTakipEt.setText("Takip Et");
+                        }
+                    });
+        }
+    private void FollowOrUnfollow(View view) {
+        String myUsername = sharedPreferences.getString(KEY_USERNAME, null);
+        String profilPageUsername = getArguments() != null ? getArguments().getString("username") : null;
+
+        Log.d("FollowOrUnfollow", "myUsername: " + myUsername);
+        Log.d("FollowOrUnfollow", "profilPageUsername: " + profilPageUsername);
+
+        if (myUsername != null && profilPageUsername != null) {
+
+
+            // UserFollow koleksiyonunda sorgu yap
+            firebaseFirestore.collection("UserFollow")
+                    .whereEqualTo("FollowedFrom", myUsername)
+                    .whereEqualTo("FollowedTo", profilPageUsername)
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                            // Eğer böyle bir veri varsa, veriyi sil
+                            for (DocumentSnapshot document : task.getResult()) {
+                                firebaseFirestore.collection("UserFollow").document(document.getId()).delete()
+                                        .addOnSuccessListener(aVoid -> {
+                                            // Silme işlemi başarılı
+                                            Log.d("Firebase", "Takipten çıkıldı.");
+                                            showFollowerCount();
+
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            // Silme işlemi başarısız
+                                            Log.w("Firebase", "Takipten çıkma başarısız.", e);
+                                        });
+                            }
+                        } else {
+                            // Eğer veri yoksa
+                            Map<String, Object> followData = new HashMap<>();
+                            followData.put("FollowedFrom", myUsername);
+                            followData.put("FollowedTo", profilPageUsername);
+                            followData.put("date", new Timestamp(new Date())); // Tarihi ekle
+
+                            firebaseFirestore.collection("UserFollow").add(followData)
+                                    .addOnSuccessListener(documentReference -> {
+                                        Log.d("Firebase", "Takip eklendi: " + documentReference.getId());
+                                        showFollowerCount();
+
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.w("Firebase", "Takip eklenirken hata oluştu", e);
+                                    });
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Sorgu başarısız
+                        Log.w("Firebase", "Veri sorgulama hatası", e);
+                    });
+        } else {
+            Log.e("FollowOrUnfollow", "Kullanıcı adı veya profil adı null");
+        }
+        showFollowerCount();
+
+
 
     }
 
@@ -130,8 +294,7 @@ public class HesapSayfa extends Fragment {
                             Map<String, Object> data = snapshot.getData();
                             String username = (String) data.get("username");
                             String profilePicture = (String) data.get("profilePhoto");
-                            Long takipciSayisi = (Long) data.get("Takipçi "+"takipciSayisi");
-                            Long takipEtmeSayisi = (Long) data.get("Takip "+"takipEtmeSayisi");
+
 
                             textView.setText("@" + username);
                             if (profilePicture != null) {
@@ -140,9 +303,6 @@ public class HesapSayfa extends Fragment {
                                 imageView.setImageResource(R.drawable.my_account);
                             }
 
-                            // Takipçi ve takip etme sayılarını göster
-                            takipciSayisiTextView.setText(takipciSayisi != null ? takipciSayisi.toString() : "0");
-                            takipEtmeSayisiTextView.setText(takipEtmeSayisi != null ? takipEtmeSayisi.toString() : "0");
                         }
                     }
                 })
@@ -220,6 +380,7 @@ public class HesapSayfa extends Fragment {
 
         firebaseFirestore.collection("usersLiked")
                 .whereEqualTo("username", storedUsername)
+                .orderBy("date", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
@@ -255,87 +416,12 @@ public class HesapSayfa extends Fragment {
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "Beğenilen gönderileri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
     }
 
-    private void followUser(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, Context context, boolean isFollowing) {
-        Map<String, Object> followData = new HashMap<>();
-        followData.put("follower", currentUserId);
-
-        if (isFollowing) {
-            // Takipten çık
-            firestore.collection("Following").document(currentUserId)
-                    .collection("following").document(targetUserId)
-                    .delete()
-                    .addOnSuccessListener(aVoid -> {
-                        followButton.setText("Takip Et");
-                        Toast.makeText(context, "Takipten çıkıldı!", Toast.LENGTH_SHORT).show();
-                        updateFollowCount(firestore, currentUserId, targetUserId, -1); // -1 ile azalt
-                    })
-                    .addOnFailureListener(e -> showError(context, "Takipten çıkarma hatası: " + e.getMessage()));
-        } else {
-            // Takip et
-            firestore.collection("Following").document(currentUserId)
-                    .collection("following").document(targetUserId)
-                    .set(followData)
-                    .addOnSuccessListener(aVoid -> {
-                        followButton.setText("Takibi Bırak");
-                        Toast.makeText(context, "Takip ediliyor!", Toast.LENGTH_SHORT).show();
-                        updateFollowCount(firestore, currentUserId, targetUserId, 1); // 1 ile artır
-                    })
-                    .addOnFailureListener(e -> showError(context, "Takip hatası: " + e.getMessage()));
-        }
-    }
-
-    private void updateFollowCount(FirebaseFirestore firestore, String currentUserId, String targetUserId, int increment) {
-        // Öncelikle, hedef kullanıcının belgesinin varlığını kontrol et
-        firestore.collection("Users").document(targetUserId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        // Takip edilen kullanıcının takipçi sayısını güncelle
-                        firestore.collection("Users").document(targetUserId)
-                                .update("takipciSayisi", FieldValue.increment(increment))
-                                .addOnSuccessListener(aVoid -> Log.d("FollowCount", "Takipçi sayısı güncellendi: " + increment))
-                                .addOnFailureListener(e -> Log.e("FollowCount", "Takipçi sayısı güncellenirken hata: " + e.getMessage()));
-                    } else {
-                        Log.e("FollowCount", "Hedef kullanıcı belgesi bulunamadı: " + targetUserId);
-                    }
-                })
-                .addOnFailureListener(e -> Log.e("FollowCount", "Kullanıcı belgesini alma hatası: " + e.getMessage()));
-
-        // Takip eden kullanıcının takip sayısını güncelle
-        firestore.collection("Users").document(currentUserId)
-                .update("takipSayisi", FieldValue.increment(increment))
-                .addOnSuccessListener(aVoid -> Log.d("FollowCount", "Takip sayısı güncellendihyhy: " + increment))
-                .addOnFailureListener(e -> Log.e("FollowCount", "Takip sayısı güncellenirken hatayhy: " + e.getMessage()));
-    }
 
 
 
 
 
-    private void showError(Context context, String message) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-    }
 
-
-
-    private void unfollowUser(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, Context context) {
-        firestore.collection("Following").document(currentUserId)
-                .collection("following").document(targetUserId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    followButton.setText("Takip Et");
-                    Toast.makeText(context, "Takipten çıkıldı!", Toast.LENGTH_SHORT).show();
-
-                    // Takip edilen kullanıcının takipçi sayısını azalt
-                    firestore.collection("Users").document(targetUserId)
-                            .update("takipciSayisi", FieldValue.increment(-1));
-
-                    // Takip eden kullanıcının takip etme sayısını azalt
-                    firestore.collection("Users").document(currentUserId)
-                            .update("takipEtmeSayisi", FieldValue.increment(-1));
-                })
-                .addOnFailureListener(e -> Toast.makeText(context, "Takipten çıkarma hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
 
 
     private void checkFollowingStatus(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, OnCheckFollowingStatusListener listener) {

@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Firebase Authentication'dan mevcut kullanıcıyı al
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
 
         // Replace the fragment with AnaSayfa
         replaceFragment(new AnaSayfa());
@@ -105,7 +105,18 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.message) {
                 clearLocalDatabase();
             } else if (itemId == R.id.account) {
-                replaceFragment(new HesapSayfa());
+
+                sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+                String username = sharedPreferences.getString(KEY_USERNAME, null);
+                Bundle bundle = new Bundle();
+                bundle.putString("username", username);
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                HesapSayfa hesapSayfaFragment = new HesapSayfa();
+                hesapSayfaFragment.setArguments(bundle);
+                fragmentTransaction.replace(R.id.frame_layout, hesapSayfaFragment);
+                fragmentTransaction.addToBackStack(null);
+                fragmentTransaction.commit();
             }
             return true;
         });
