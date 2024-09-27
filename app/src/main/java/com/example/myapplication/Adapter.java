@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -53,20 +55,20 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     private Context context;
     private List<Post> postList;
     private FirebaseFirestore firebaseFirestore;
+    private SharedPreferences sharedPreferences;
 
     private ImageView selectPhotoButton, imageView, delete, selectedPhoto;
     private Button gonder;
+    private LinearLayout replyedLinearLayout;
+    private ImageView profilePhotoSend;
     private EditText editText;
     private TextView usernameLabel;
     private ProgressBar progressBar;
     private FirebaseAuth auth;
-    private SharedPreferences sharedPreferences;
+
     public String postId;
     private static final String PREF_NAME = "MyPrefs";
     private static final String KEY_USERNAME = "username";
-
-
-
     public String usernameSend,postTextSend,postImageUrl;
 
     public Adapter(Context context, List<Post> postList) {
@@ -79,6 +81,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     public PostViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(context).inflate(R.layout.recycler_item, parent, false);
         return new PostViewHolder(view);
+
     }
 
     @Override
@@ -143,6 +146,8 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         }
 
         postId=post.id;
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        String username = sharedPreferences.getString(KEY_USERNAME, null);
 
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseFirestore.collection("Users").whereEqualTo("username", post.username)
@@ -156,16 +161,36 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                         Picasso.get().load(pp).into(holder.PP);
                     }
                 });
-        firebaseFirestore.collection("Post").document(post.id)
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        DocumentSnapshot postSnapshot = task.getResult();
-                        String likeCount = String.valueOf(postSnapshot.getLong("likeCount")); // Long değerini al
-                        if (likeCount==null){
-                            likeCount="0";
-                        }
-                        holder.btnBegenmeSayisi.setText(likeCount); // beğeni sayısını set et
+
+
+        firebaseFirestore.collection("UsersLiked")
+                .whereEqualTo("PostId", post.id)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null) {
+                        Log.w("Firebase", "Dinleme hatası", error);
+                        return;
+                    }
+
+                    if (snapshots != null) {
+                        int likeCount = snapshots.size();
+                        holder.btnBegenmeSayisi.setText(String.valueOf(likeCount));
+                    }
+                });
+
+        // Kullanıcının bu postu beğenip beğenmediğini kontrol et
+        firebaseFirestore.collection("UsersLiked")
+                .whereEqualTo("PostId", post.id)
+                .whereEqualTo("LikedFrom", username)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null) {
+                        Log.w("Firebase", "Dinleme hatası", error);
+                        return;
+                    }
+
+                    if (snapshots != null && !snapshots.isEmpty()) {
+                        holder.likeButton.setImageResource(R.drawable.heart2); // Beğenildi durumu
+                    } else {
+                        holder.likeButton.setImageResource(R.drawable.heart); // Beğenilmedi durumu
                     }
                 });
 
@@ -189,6 +214,10 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
             // Cevapla işlemini burada yapabilirsiniz
             SendReply(post.id);
         });
+        holder.likeButton.setOnClickListener(v -> {
+            // Cevapla işlemini burada yapabilirsiniz
+            LikeorUnlikePost(post.id);
+        });
 
         // Yorum butonuna tıklama olayı
         holder.commentButton.setOnClickListener(v -> {
@@ -197,40 +226,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         });
 
         // Beğen butonuna tıklama olayı
-        holder.likeButton.setOnClickListener(v -> {
-            sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            String username = sharedPreferences.getString(KEY_USERNAME, null);
 
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-            // Postun beğenilip beğenilmediğini kontrol et
-            db.collection("usersLiked").whereEqualTo("postId", post.id).whereEqualTo("username", username)
-                    .get()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                            // Kullanıcı postu daha önce beğenmiş
-                            unlikePost(db, post.id, username, holder.likeButton);
-                        } else {
-                            // Kullanıcı postu henüz beğenmemiş
-                            likePost(db, post.id, username, holder.likeButton, context);
-                        }
-                    });
-        });
-        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        String username = sharedPreferences.getString(KEY_USERNAME, null);
-
-        firebaseFirestore.collection("usersLiked").whereEqualTo("postId", postId)
-                .whereEqualTo("username", username)
-                .get()
-                .addOnCompleteListener(task -> {
-
-                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                        holder.likeButton.setImageResource(R.drawable.heart2);
-                    }
-                    else {
-                        holder.likeButton.setImageResource(R.drawable.heart);
-                    }
-                });
 
 
     }
@@ -252,49 +248,53 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         intent.putExtra("image", postImageUrl);
         context.startActivity(intent);
     }
-    private void likePost(FirebaseFirestore db, String postId, String currentUserId, ImageView likeButton, Context context) {
-        // Post belgesini güncelle (likeCount değerini 1 artır)
-        db.collection("Post").document(postId)
-                .update("likeCount", FieldValue.increment(1))
-                .addOnSuccessListener(aVoid -> {
-                    // Beğenme işlemi Firestore'a kaydedildi, kullanıcıyı ve postu 'usersLiked' koleksiyonuna ekle
-                    Map<String, Object> likeData = new HashMap<>();
-                    Date currentDate = new Date();
-                    Timestamp currentTimestamp = new Timestamp(currentDate);
-                    likeData.put("date", currentTimestamp);
-                    likeData.put("postId", postId);
-                    likeData.put("username", currentUserId);
 
-                    db.collection("usersLiked").add(likeData)
-                            .addOnSuccessListener(documentReference -> {
-                                Toast.makeText(context, "Beğenildi", Toast.LENGTH_SHORT).show();
-                                likeButton.setImageResource(R.drawable.heart2); // Değiştirilecek simge
-                            });
-                });
-    }
+    private void LikeorUnlikePost(String postid){
 
-    private void unlikePost(FirebaseFirestore db, String postId, String currentUserId, ImageView likeButton) {
-        db.collection("usersLiked")
-                .whereEqualTo("postId", postId)
-                .whereEqualTo("username", currentUserId)
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        String myUsername2 = sharedPreferences.getString(KEY_USERNAME, null);
+
+        firebaseFirestore.collection("UsersLiked")
+                .whereEqualTo("LikedFrom", myUsername2)
+                .whereEqualTo("PostId", postid)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            db.collection("usersLiked").document(document.getId()).delete()
+                        // Eğer böyle bir veri varsa, veriyi sil
+                        for (DocumentSnapshot document : task.getResult()) {
+                            firebaseFirestore.collection("UsersLiked").document(document.getId()).delete()
                                     .addOnSuccessListener(aVoid -> {
-                                        db.collection("Post").document(postId)
-                                                .update("likeCount", FieldValue.increment(-1))
-                                                .addOnSuccessListener(aVoid1 -> {
-                                                    // Beğeni kaldırıldıktan sonra butonun görselini değiştir
-                                                    likeButton.setImageResource(R.drawable.heart); // beğeni simgesi
-                                                    Toast.makeText(context, "Beğeni kaldırıldı", Toast.LENGTH_SHORT).show();
-                                                });
+                                        // Silme işlemi başarılı
+                                        Log.d("Firebase", "Takipten çıkıldı.");
+
+                                        //showFollowerCount();
+
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        // Silme işlemi başarısız
+                                        Log.w("Firebase", "Takipten çıkma başarısız.", e);
                                     });
                         }
+                    } else {
+                        // Eğer veri yoksa
+                        Map<String, Object> followData = new HashMap<>();
+                        followData.put("LikedFrom", myUsername2);
+                        followData.put("PostId", postid);
+                        followData.put("date", new Timestamp(new Date())); // Tarihi ekle
+
+                        firebaseFirestore.collection("UsersLiked").add(followData)
+                                .addOnSuccessListener(documentReference -> {
+                                    Log.d("Firebase", "Takip eklendi: " + documentReference.getId());
+                                    //showFollowerCount();
+
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.w("Firebase", "Takip eklenirken hata oluştu", e);
+                                });
                     }
                 });
     }
+
 
 
     private void openProfilePage(String username) {
@@ -312,7 +312,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     @SuppressLint({"MissingInflatedId", "WrongViewCast"})
     private void SendReply(String postid) {
         // HesapSayfa fragmentına geçiş kodu
-        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String username = sharedPreferences.getString(KEY_USERNAME, null);
 
         // Cevaplama için dialog penceresi aç
@@ -335,7 +335,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         TextView usernameSend = dialogView.findViewById(R.id.usernameSend);
         TextView postTextSend = dialogView.findViewById(R.id.post_textSend);
         ImageView postImageSend = dialogView.findViewById(R.id.post_imageSend);
-        ImageView profilePhotoSend = dialogView.findViewById(R.id.profilePhotoSend);
+        profilePhotoSend = dialogView.findViewById(R.id.profilePhotoSend);
+
+        replyedLinearLayout = dialogView.findViewById(R.id.replyedLinearLayout);
 
         // Kullanıcının profil resmini ve adını getir
 
@@ -364,7 +366,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
 
         FirebaseFirestore firebaseFirestore = FirebaseFirestore.getInstance();
-        firebaseFirestore.collection("Post").document(postId)
+        firebaseFirestore.collection("Post").document(postid)
                 .get()
                 .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                     @Override
@@ -446,7 +448,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // Retrieve the username from SharedPreferences
-        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String username = sharedPreferences.getString(KEY_USERNAME, "Unknown User");
 
         // Get current date and time as Timestamp
@@ -490,7 +492,14 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                         selectPhotoButton.setVisibility(View.VISIBLE);
                         editText.setText(null);
                         gonder.setVisibility(View.VISIBLE);
+                        replyedLinearLayout.setVisibility(View.VISIBLE);
+
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        AlertDialog alertDialog = builder.create();
+                        alertDialog.dismiss();
                     }, 2000);
+
                 })
                 .addOnFailureListener(e -> {
 

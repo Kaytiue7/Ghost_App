@@ -8,8 +8,8 @@ public class Post {
     public String username;
     public String date;
     public String pp;
-    private int likeCount;
-    public Post(String id,String replyId,String metin, String image,String username, String date, String pp, int likeCount) {
+
+    public Post(String id,String replyId,String metin, String image,String username, String date, String pp ) {
         this.id = id;
         this.replyId = replyId;
         this.metin = metin;
@@ -17,6 +17,7 @@ public class Post {
         this.username = username;
         this.date = date;
         this.pp = pp;
-        this.likeCount = likeCount;
+
     }
+
 }

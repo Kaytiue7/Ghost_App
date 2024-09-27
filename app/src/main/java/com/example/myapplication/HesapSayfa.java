@@ -338,7 +338,7 @@ public class HesapSayfa extends Fragment {
                                 Timestamp date = (Timestamp) data.get("date");
                                 String date2 = getTimeAgo(date);
 
-                                Post post = new Post(id, replyId, metin, image, username, date2, image, 0);
+                                Post post = new Post(id, replyId, metin, image, username, date2, image);
                                 postList.add(post);
                             }
                         }
@@ -378,14 +378,14 @@ public class HesapSayfa extends Fragment {
             storedUsername = getArguments().getString("username");
         }
 
-        firebaseFirestore.collection("usersLiked")
-                .whereEqualTo("username", storedUsername)
-                .orderBy("date", Query.Direction.DESCENDING)
+        firebaseFirestore.collection("UsersLiked")
+                .whereEqualTo("LikedFrom", storedUsername)
+                //.orderBy("date", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
                         for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
-                            String postId = snapshot.getString("postId"); // Beğenilen gönderinin ID'si
+                            String postId = snapshot.getString("PostId"); // Beğenilen gönderinin ID'si
 
                             // Gönderi detaylarını almak için Post koleksiyonunu sorgula
                             firebaseFirestore.collection("Post").document(postId)
@@ -403,7 +403,7 @@ public class HesapSayfa extends Fragment {
                                                 String date2 = getTimeAgo(date);
 
                                                 // Post nesnesini oluştur ve listeye ekle
-                                                Post post = new Post(id, replyId, metin, image, username, date2, image, 0);
+                                                Post post = new Post(id, replyId, metin, image, username, date2, image);
                                                 postList.add(post);
 
                                                 adapter.notifyDataSetChanged();
@@ -416,46 +416,6 @@ public class HesapSayfa extends Fragment {
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "Beğenilen gönderileri yükleme hatası: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
     }
 
-
-
-
-
-
-
-
-
-    private void checkFollowingStatus(FirebaseFirestore firestore, String currentUserId, String targetUserId, Button followButton, OnCheckFollowingStatusListener listener) {
-        if (currentUserId == null || targetUserId == null) {
-            Log.e("HesapSayfa", "User IDs cannot be null");
-            followButton.setEnabled(false);
-            return;
-        }
-
-        // Kendini takip edemezsin kontrolü
-        if (currentUserId.equals(targetUserId)) {
-            Toast.makeText(getContext(), "Kendini takip edemezsin", Toast.LENGTH_SHORT).show();
-            followButton.setEnabled(false);
-            return;
-        }
-
-        // Takip durumu kontrolü
-        firestore.collection("Following").document(currentUserId)
-                .collection("following").document(targetUserId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    boolean isFollowing = documentSnapshot.exists();
-                    followButton.setText(isFollowing ? "Takibi Bırak" : "Takip Et");
-                    listener.onCheckComplete(isFollowing);
-                })
-                .addOnFailureListener(e -> {
-                    followButton.setText("Takip Et");
-                    listener.onCheckComplete(false);
-                });
-
-    }
-    interface OnCheckFollowingStatusListener {
-        void onCheckComplete(boolean isFollowing);
-    }
 
 
 

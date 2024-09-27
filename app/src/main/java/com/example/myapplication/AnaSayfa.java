@@ -33,7 +33,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import android.text.format.DateUtils;
-
 public class AnaSayfa extends Fragment {
 
     private RecyclerView recyclerView;
@@ -46,49 +45,27 @@ public class AnaSayfa extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_ana_sayfa, container, false);
-//selamlar sevgiler
+
         recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            // Swipe-to-refresh yapıldığında veriyi yeniden çek
+            getData();
+        });
 
         postList = new ArrayList<>();
         adapter = new Adapter(getContext(), postList);
         recyclerView.setAdapter(adapter);
+
         firebaseFirestore = FirebaseFirestore.getInstance();
 
-
-
+        // İlk veri çekimi
         getData();
 
         return view;
     }
-
-    private String getTimeAgo(Timestamp timestamp) {
-        long time = timestamp.toDate().getTime();
-        long now = System.currentTimeMillis();
-        long diff = now - time;
-
-        if (diff < DateUtils.HOUR_IN_MILLIS) {
-            // Less than an hour, show in minutes
-            return (diff / DateUtils.MINUTE_IN_MILLIS) + " dakika önce";
-        } else if (diff < DateUtils.DAY_IN_MILLIS) {
-            // Less than a day, show in hours
-            long hours = diff / DateUtils.HOUR_IN_MILLIS;
-            return hours + " saat önce";
-        } else if (diff < DateUtils.WEEK_IN_MILLIS) {
-            // Less than a week, show in days
-            long days = diff / DateUtils.DAY_IN_MILLIS;
-            return days + " gün önce";
-        } else if (diff < 56 * DateUtils.WEEK_IN_MILLIS) {
-            // Less than 56 weeks, show in weeks
-            long weeks = diff / DateUtils.WEEK_IN_MILLIS;
-            return weeks + " hafta önce";
-        } else {
-            // More than 56 weeks, show the date in "dd.MM.yyyy" format
-            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-            return sdf.format(timestamp.toDate());
-        }
-    }
-
 
     private void getData() {
         firebaseFirestore.collection("Post")
@@ -121,21 +98,19 @@ public class AnaSayfa extends Fragment {
                                                     pp = userSnapshot.getString("profilePhoto");
                                                 }
 
-                                                // Post objesini oluştur ve listeye ekle
-
-
                                                 // Liste güncellendikten sonra adapter'i bilgilendirin
                                                 adapter.notifyDataSetChanged();
+                                                // Swipe-to-refresh işlemi bitince spinner'ı gizleyin
+                                                swipeRefreshLayout.setRefreshing(false);
                                             });
-                                    if (replyId!=null){
-                                        Post post = new Post(id,replyId, metin, image, username, date2, image, 0);
-                                        postList.add(post);
-                                    }
-                                    else{
-                                        Post post = new Post(id,null, metin, image, username, date2, image, 0);
-                                        postList.add(post);
-                                    }
 
+                                    if (replyId != null) {
+                                        Post post = new Post(id, replyId, metin, image, username, date2, image);
+                                        postList.add(post);
+                                    } else {
+                                        Post post = new Post(id, null, metin, image, username, date2, image);
+                                        postList.add(post);
+                                    }
                                 }
                             }
                         }
@@ -143,29 +118,25 @@ public class AnaSayfa extends Fragment {
                 });
     }
 
-    public static String getTimeAgo(long timeDiff) {
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(timeDiff);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(timeDiff);
-        long hours = TimeUnit.MILLISECONDS.toHours(timeDiff);
-        long days = TimeUnit.MILLISECONDS.toDays(timeDiff);
-        long weeks = days / 7;
+    private String getTimeAgo(Timestamp timestamp) {
+        long time = timestamp.toDate().getTime();
+        long now = System.currentTimeMillis();
+        long diff = now - time;
 
-        if (weeks > 0) {
-            return weeks + " hafta önce";
-        } else if (days > 0) {
-            return days + " gün önce";
-        } else if (hours > 0) {
-            return hours + " saat önce";
-        } else if (minutes > 0) {
-            return minutes + " dakika önce";
+        if (diff < DateUtils.HOUR_IN_MILLIS) {
+            return (diff / DateUtils.MINUTE_IN_MILLIS) + " dakika önce";
+        } else if (diff < DateUtils.DAY_IN_MILLIS) {
+            return (diff / DateUtils.HOUR_IN_MILLIS) + " saat önce";
+        } else if (diff < DateUtils.WEEK_IN_MILLIS) {
+            return (diff / DateUtils.DAY_IN_MILLIS) + " gün önce";
         } else {
-            return seconds + " saniye önce";
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            return sdf.format(timestamp.toDate());
         }
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Cleanup if needed
     }
 }
