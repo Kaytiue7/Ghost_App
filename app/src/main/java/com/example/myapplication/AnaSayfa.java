@@ -69,54 +69,42 @@ public class AnaSayfa extends Fragment {
 
     private void getData() {
         firebaseFirestore.collection("Post")
-                .orderBy("date", Query.Direction.DESCENDING) // Date alanına göre sıralama
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
-                        if (value != null) {
-                            postList.clear(); // Yeni veriler eklenmeden önce listeyi temizleyin
+                .orderBy("date", Query.Direction.DESCENDING)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
+                        return;
+                    }
 
-                            for (DocumentSnapshot snapshot : value.getDocuments()) {
-                                Map<String, Object> data = snapshot.getData();
-                                if (data != null) {
+                    if (value != null) {
+                        postList.clear(); // Clear the list before adding new data
+                        for (DocumentSnapshot snapshot : value.getDocuments()) {
+                            Map<String, Object> data = snapshot.getData();
+                            if (data != null) {
+                                String postType = (String) data.get("postType");
+
+                                // Eğer postType "Comment" ise bu postu atla
+                                if (!postType.equals("Comment")) {
+
                                     String id = snapshot.getId();
+                                    String replyId = (String) data.get("repyledPost");
                                     String metin = (String) data.get("metin");
                                     String image = (String) data.get("image");
                                     String username = (String) data.get("username");
-                                    String replyId = (String) data.get("repyledPost");
                                     Timestamp date = (Timestamp) data.get("date");
                                     String date2 = getTimeAgo(date);
 
-                                    // Kullanıcının profil fotoğrafını getirme
-                                    firebaseFirestore.collection("Users").whereEqualTo("username", username)
-                                            .get()
-                                            .addOnCompleteListener(task -> {
-                                                String pp = null;
-
-                                                if (task.isSuccessful() && !task.getResult().isEmpty()) {
-                                                    DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
-                                                    pp = userSnapshot.getString("profilePhoto");
-                                                }
-
-                                                // Liste güncellendikten sonra adapter'i bilgilendirin
-                                                adapter.notifyDataSetChanged();
-                                                // Swipe-to-refresh işlemi bitince spinner'ı gizleyin
-                                                swipeRefreshLayout.setRefreshing(false);
-                                            });
-
-                                    if (replyId != null) {
-                                        Post post = new Post(id, replyId, metin, image, username, date2, image);
-                                        postList.add(post);
-                                    } else {
-                                        Post post = new Post(id, null, metin, image, username, date2, image);
-                                        postList.add(post);
-                                    }
+                                    Post post = new Post(id, replyId, postType, metin, image, username, date2);
+                                    postList.add(post);
                                 }
                             }
                         }
+                        adapter.notifyDataSetChanged();
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
                     }
                 });
     }
+
 
     private String getTimeAgo(Timestamp timestamp) {
         long time = timestamp.toDate().getTime();

@@ -295,8 +295,8 @@ public class MainActivity extends AppCompatActivity {
                 post.put("metin", text);
                 post.put("username", username);
                 post.put("date", currentTimestamp);// Zaman damgasını ekle
-                post.put("likeCount", 0);
-
+                post.put("postType","Post");
+                post.put("repyledPost", null);
 
                 if (imageUrl != null) {
                     post.put("image", imageUrl);

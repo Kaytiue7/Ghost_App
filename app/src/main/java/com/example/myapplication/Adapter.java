@@ -88,7 +88,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post = postList.get(position);
         String replyId = post.replyId;
-        if (replyId == null || replyId.isEmpty()){
+
+
+        if (!post.postType.equals("Re-Post") || replyId.isEmpty()){
             holder.replyedLinearLayout.setVisibility(View.GONE);
         }
         else {
@@ -222,7 +224,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         // Yorum butonuna tıklama olayı
         holder.commentButton.setOnClickListener(v -> {
             // Yorum işlemi burada yapılabilir
-
+            SendComment(post.id);
         });
 
         // Beğen butonuna tıklama olayı
@@ -440,6 +442,137 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         });
     }
 
+    @SuppressLint("MissingInflatedId")
+    private void SendComment(String postid) {
+        // HesapSayfa fragmentına geçiş kodu
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        String username = sharedPreferences.getString(KEY_USERNAME, null);
+
+        // Cevaplama için dialog penceresi aç
+        AlertDialog.Builder builder = new AlertDialog.Builder(context); // Context'i burada kullan
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View dialogView = inflater.inflate(R.layout.yanit_yukleme_ekran, null);
+        builder.setView(dialogView);
+
+        ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
+        selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
+        selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
+        editText = dialogView.findViewById(R.id.editText);
+        gonder = dialogView.findViewById(R.id.gonder);
+        delete = dialogView.findViewById(R.id.delete);
+        usernameLabel = dialogView.findViewById(R.id.usernameMy);
+        imageView = dialogView.findViewById(R.id.imageView);
+        progressBar = dialogView.findViewById(R.id.progressBar);
+
+
+        TextView usernameSend = dialogView.findViewById(R.id.usernameSend);
+        TextView postTextSend = dialogView.findViewById(R.id.post_textSend);
+        ImageView postImageSend = dialogView.findViewById(R.id.post_imageSend);
+        profilePhotoSend = dialogView.findViewById(R.id.profilePhotoSend);
+
+        replyedLinearLayout = dialogView.findViewById(R.id.replyedLinearLayout);
+
+        // Kullanıcının profil resmini ve adını getir
+
+
+        // Dialogu göster
+
+        firebaseFirestore.collection("Users").whereEqualTo("username", username)
+                .get()
+                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                    @Override
+                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                        for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
+                            if (snapshot.exists()) {
+                                Map<String, Object> data = snapshot.getData();
+                                usernameLabel.setText("@"+username);
+                                String profilePicture = (String) data.get("profilePhoto");
+
+
+                                if (profilePicture != null) {
+                                    Picasso.get().load(profilePicture).into(profilePhoto);
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+        FirebaseFirestore firebaseFirestore = FirebaseFirestore.getInstance();
+        firebaseFirestore.collection("Post").document(postid)
+                .get()
+                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                    @Override
+                    public void onSuccess(DocumentSnapshot documentSnapshot) {
+                        if (documentSnapshot.exists()) {
+                            // Post verilerini al
+                            String usernameeSend = documentSnapshot.getString("username");
+                            String metinSend = documentSnapshot.getString("metin");
+                            String imageUrlSend = documentSnapshot.getString("image");
+
+                            // Verileri UI bileşenlerine yerleştir
+                            usernameSend.setText("@" + usernameeSend);
+                            postTextSend.setText(metinSend);
+
+                            if (imageUrlSend != null && !imageUrlSend.isEmpty()) {
+                                postImageSend.setVisibility(View.VISIBLE);
+                                Picasso.get().load(imageUrlSend).into(postImageSend);
+                            } else {
+                                postImageSend.setVisibility(View.GONE);
+                            }
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameeSend)
+                                    .get()
+                                    .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                                        @Override
+                                        public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                                            for (DocumentSnapshot snapshot : queryDocumentSnapshots.getDocuments()) {
+                                                if (snapshot.exists()) {
+                                                    Map<String, Object> data = snapshot.getData();
+
+                                                    String profilePictureSend = (String) data.get("profilePhoto");
+
+
+                                                    if (profilePictureSend != null) {
+                                                        Picasso.get().load(profilePictureSend).into(profilePhotoSend);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                        }
+                    }
+                });
+
+        // Dialogu göster
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+
+
+        selectPhotoButton.setOnClickListener(v -> openGallery());
+
+        delete.setOnClickListener(v -> {
+            selectedPhoto.setImageResource(0); // Clear the image
+            selectedPhoto.setVisibility(View.GONE);
+            delete.setVisibility(View.GONE);
+            selectPhotoButton.setVisibility(View.VISIBLE);
+        });
+
+        gonder.setOnClickListener(v -> {
+            String text = editText.getText().toString().trim();
+            if (!text.isEmpty()) {
+
+                gonder.setVisibility(View.GONE);
+                if (selectedPhoto.getVisibility() == View.VISIBLE) {
+                    uploadImageToStorage2(text,postid);
+                } else {
+                    uploadTextToFirestore2(text, null,postid);
+                }
+            } else if (selectedPhoto.getVisibility() == View.VISIBLE) {
+                uploadImageToStorage2(null,postid);
+            }
+        });
+    }
+
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         ((AppCompatActivity) context).startActivityForResult(intent, PICK_IMAGE_REQUEST);
@@ -466,6 +599,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         post.put("username", username);
         post.put("date", currentTimestamp); // Zaman damgasını ekle
         post.put("repyledPost", postid);
+        post.put("postType","Re-Post");
 
         if (imageUrl != null) {
             post.put("image", imageUrl);
@@ -537,6 +671,99 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         });
     }
 
+    private void uploadTextToFirestore2(String text, String imageUrl, String postid) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Retrieve the username from SharedPreferences
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        String username = sharedPreferences.getString(KEY_USERNAME, "Unknown User");
+
+        // Get current date and time as Timestamp
+        Date currentDate = new Date();
+        Timestamp currentTimestamp = new Timestamp(currentDate);
+
+        // Öncelikle mevcut belge sayısını bul
+
+        // Firestore'daki mevcut belge sayısını al
+
+
+        // Veriyi hazırlama
+        Map<String, Object> post = new HashMap<>();
+        post.put("metin", text);
+        post.put("username", username);
+        post.put("date", currentTimestamp); // Zaman damgasını ekle
+        post.put("repyledPost", postid);
+        post.put("postType","Comment");
+
+        if (imageUrl != null) {
+            post.put("image", imageUrl);
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Veriyi Firestore'a ekle
+        db.collection("Post")
+                .add(post)
+                .addOnSuccessListener(documentReference -> {
+
+                    progressBar.setProgress(100);
+
+                    // 2 saniye gecikme ile işlemleri gerçekleştir
+                    new Handler().postDelayed(() -> {
+                        // Progress barı gizle
+                        progressBar.setVisibility(View.GONE);
+
+                        // UI elemanlarını sıfırla
+                        delete.setVisibility(View.GONE);
+                        selectedPhoto.setVisibility(View.GONE);
+                        selectedPhoto.setImageResource(0);
+                        selectPhotoButton.setVisibility(View.VISIBLE);
+                        editText.setText(null);
+                        gonder.setVisibility(View.VISIBLE);
+                        replyedLinearLayout.setVisibility(View.VISIBLE);
+
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        AlertDialog alertDialog = builder.create();
+                        alertDialog.dismiss();
+                    }, 2000);
+
+                })
+                .addOnFailureListener(e -> {
+
+                });
+
+
+    }
+
+    private void uploadImageToStorage2(String text,String postid) {
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        StorageReference storageRef = storage.getReference();
+        StorageReference postRef = storageRef.child("PostPhoto/" + UUID.randomUUID().toString());
+
+        selectedPhoto.setDrawingCacheEnabled(true);
+        selectedPhoto.buildDrawingCache();
+        Bitmap bitmap = ((BitmapDrawable) selectedPhoto.getDrawable()).getBitmap();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        byte[] data = baos.toByteArray();
+
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        UploadTask uploadTask = postRef.putBytes(data);
+        uploadTask.addOnProgressListener(taskSnapshot -> {
+            double progress = (100.0 * taskSnapshot.getBytesTransferred()) / taskSnapshot.getTotalByteCount();
+            progressBar.setProgress((int) progress);
+        }).addOnSuccessListener(taskSnapshot -> {
+            postRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                String imageUrl = uri.toString();
+                uploadTextToFirestore(text, imageUrl,postid);
+            });
+        }).addOnFailureListener(exception -> {
+
+        });
+    }
 
 
     @Override

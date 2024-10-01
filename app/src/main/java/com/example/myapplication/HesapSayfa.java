@@ -51,7 +51,6 @@ public class HesapSayfa extends Fragment {
     public TextView textView,followerTextView, followedTextView;
     public Button btnPostlarim, btnBegendiklerim, btnYanitlarim, btnTakipEt;
     public String anlik_sayfa="AnaSayfa";
-
     public String username;
 
     @SuppressLint("MissingInflatedId")
@@ -71,12 +70,18 @@ public class HesapSayfa extends Fragment {
         followedTextView = view.findViewById(R.id.followedTextView);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
 
-        if ( anlik_sayfa=="AnaSayfa"){
+
+
+        if ( anlik_sayfa.equals("AnaSayfa")){
             swipeRefreshLayout.setOnRefreshListener(this::getData);
 
         }
-        if ( anlik_sayfa=="Begenmelerim"){
+        if ( anlik_sayfa.equals("Begenmelerim")){
             swipeRefreshLayout.setOnRefreshListener(this::begenmelerim);
+
+        }
+        if ( anlik_sayfa.equals("Yanıtlarım")){
+            swipeRefreshLayout.setOnRefreshListener(this::AllPost);
 
         }
 
@@ -105,6 +110,13 @@ public class HesapSayfa extends Fragment {
             public void onClick(View v) {
                 anlik_sayfa="AnaSayfa";
                 getData();
+            }
+        });
+        btnYanitlarim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                anlik_sayfa="Yanıtlarım";
+                AllPost();
             }
         });
 
@@ -330,16 +342,66 @@ public class HesapSayfa extends Fragment {
                         for (DocumentSnapshot snapshot : value.getDocuments()) {
                             Map<String, Object> data = snapshot.getData();
                             if (data != null) {
-                                String id = snapshot.getId();
-                                String metin = (String) data.get("metin");
-                                String image = (String) data.get("image");
-                                String replyId = (String) data.get("repyledPost");
-                                String username = (String) data.get("username");
-                                Timestamp date = (Timestamp) data.get("date");
-                                String date2 = getTimeAgo(date);
+                                String postType = (String) data.get("postType");
 
-                                Post post = new Post(id, replyId, metin, image, username, date2, image);
-                                postList.add(post);
+                                // Eğer postType "Comment" ise bu postu atla
+                                if (!postType.equals("Comment")) {
+
+                                    String id = snapshot.getId();
+                                    String replyId = (String) data.get("repyledPost");
+                                    String metin = (String) data.get("metin");
+                                    String image = (String) data.get("image");
+                                    String username = (String) data.get("username");
+                                    Timestamp date = (Timestamp) data.get("date");
+                                    String date2 = getTimeAgo(date);
+
+                                    Post post = new Post(id, replyId, postType, metin, image, username, date2);
+                                    postList.add(post);
+                                }
+                            }
+                        }
+                        adapter.notifyDataSetChanged();
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
+                    }
+                });
+    }
+
+    private void AllPost() {
+        String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
+        if (getArguments() != null) {
+            storedUsername = getArguments().getString("username");
+        }
+
+        firebaseFirestore.collection("Post")
+                .orderBy("date", Query.Direction.DESCENDING)
+                .whereEqualTo("username", storedUsername)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        swipeRefreshLayout.setRefreshing(false); // Stop refreshing
+                        return;
+                    }
+
+                    if (value != null) {
+                        postList.clear(); // Clear the list before adding new data
+                        for (DocumentSnapshot snapshot : value.getDocuments()) {
+                            Map<String, Object> data = snapshot.getData();
+                            if (data != null) {
+                                String postType = (String) data.get("postType");
+
+                                // Eğer postType "Comment" ise bu postu atla
+
+
+                                    String id = snapshot.getId();
+                                    String replyId = (String) data.get("repyledPost");
+                                    String metin = (String) data.get("metin");
+                                    String image = (String) data.get("image");
+                                    String username = (String) data.get("username");
+                                    Timestamp date = (Timestamp) data.get("date");
+                                    String date2 = getTimeAgo(date);
+
+                                    Post post = new Post(id, replyId, postType, metin, image, username, date2);
+                                    postList.add(post);
+
                             }
                         }
                         adapter.notifyDataSetChanged();
@@ -394,19 +456,17 @@ public class HesapSayfa extends Fragment {
                                         if (postSnapshot.exists()) {
                                             Map<String, Object> postData = postSnapshot.getData();
                                             if (postData != null) {
-                                                String id = postSnapshot.getId();
+                                                String id = snapshot.getId();
+                                                String replyId = (String) postData.get("repyledPost");
+                                                String postType = (String) postData.get("postType");
                                                 String metin = (String) postData.get("metin");
                                                 String image = (String) postData.get("image");
-                                                String replyId = (String) postData.get("repyledPost");
                                                 String username = (String) postData.get("username");
                                                 Timestamp date = (Timestamp) postData.get("date");
                                                 String date2 = getTimeAgo(date);
 
-                                                // Post nesnesini oluştur ve listeye ekle
-                                                Post post = new Post(id, replyId, metin, image, username, date2, image);
+                                                Post post = new Post(id, replyId,postType,  metin, image, username, date2);
                                                 postList.add(post);
-
-                                                adapter.notifyDataSetChanged();
                                             }
                                         }
                                     });
