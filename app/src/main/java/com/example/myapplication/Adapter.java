@@ -86,15 +86,83 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
+        firebaseFirestore = FirebaseFirestore.getInstance();
         Post post = postList.get(position);
         String replyId = post.replyId;
 
 
-        if (!post.postType.equals("Re-Post") || replyId.isEmpty()){
+        if (post.postType.equals("Post") || post.postType.isEmpty()){
+            holder.L_shape.setVisibility(View.INVISIBLE);
             holder.replyedLinearLayout.setVisibility(View.GONE);
+
+            holder.postText.setText(post.metin);
+            holder.username.setText("@" + post.username);
+            holder.tarih.setText(post.date);
+
+            if (post.image != null) {
+                holder.postImage.setVisibility(View.VISIBLE);
+                Picasso.get().load(post.image).into(holder.postImage);
+            } else {
+                holder.postImage.setVisibility(View.GONE);
+            }
+
+
+
+            firebaseFirestore.collection("Post").document(post.id).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            // Firebase'den dönen verileri TextView'lere ve ImageView'e ata
+                            usernameSend = documentSnapshot.getString("username");
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
+                                    .get()
+                                    .addOnCompleteListener(task -> {
+                                        String userpp = null;
+                                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                                            DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
+                                            userpp = userSnapshot.getString("profilePhoto");
+                                            holder.PP.setImageDrawable(null);
+                                            Picasso.get().load(userpp).into(holder.PP);
+                                        }
+                                    });
+                        }
+                    });
+
+
+
+
         }
-        else {
-            FirebaseFirestore firebaseFirestore = FirebaseFirestore.getInstance();
+        else if(post.postType.equals("Re-Post")){
+            holder.L_shape.setVisibility(View.INVISIBLE);
+            holder.postText.setText(post.metin);
+            holder.username.setText("@" + post.username);
+            holder.tarih.setText(post.date);
+
+            if (post.image != null) {
+                holder.postImage.setVisibility(View.VISIBLE);
+                Picasso.get().load(post.image).into(holder.postImage);
+            } else {
+                holder.postImage.setVisibility(View.GONE);
+            }
+
+            firebaseFirestore.collection("Post").document(post.id).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            // Firebase'den dönen verileri TextView'lere ve ImageView'e ata
+                            usernameSend = documentSnapshot.getString("username");
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
+                                    .get()
+                                    .addOnCompleteListener(task -> {
+                                        String userpp = null;
+                                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                                            DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
+                                            userpp = userSnapshot.getString("profilePhoto");
+                                            holder.PP.setImageDrawable(null);
+                                            Picasso.get().load(userpp).into(holder.PP);
+                                        }
+                                    });
+                        }
+                    });
+
             firebaseFirestore.collection("Post").document(replyId).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
@@ -102,6 +170,16 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                             usernameSend = documentSnapshot.getString("username");
                             postTextSend = documentSnapshot.getString("metin");
                             postImageUrl = documentSnapshot.getString("image");
+
+                            if (postImageUrl != null) {
+                                holder.postImageSendImageView.setVisibility(View.VISIBLE);
+                                Picasso.get().load(postImageUrl).into(holder.postImageSendImageView);
+                            } else {
+                                holder.postImageSendImageView.setVisibility(View.GONE);
+                            }
+
+                            // replyedLinearLayout'u görünür yap
+                            holder.replyedLinearLayout.setVisibility(View.VISIBLE);
                             firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
                                     .get()
                                     .addOnCompleteListener(task -> {
@@ -119,15 +197,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
                             // Resim yüklemek için Glide ya da Picasso gibi kütüphaneler kullanabilirsiniz
 
-                            if (postImageUrl != null) {
-                                holder.postImageSendImageView.setVisibility(View.VISIBLE);
-                                Picasso.get().load(postImageUrl).into(holder.postImageSendImageView);
-                            } else {
-                                holder.postImageSendImageView.setVisibility(View.GONE);
-                            }
 
-                            // replyedLinearLayout'u görünür yap
-                            holder.replyedLinearLayout.setVisibility(View.VISIBLE);
                         }
                     })
                     .addOnFailureListener(e -> {
@@ -136,16 +206,91 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                     });
 
 
+
+
+        } else if (post.postType.equals("Comment")) {
+            holder.L_shape.setVisibility(View.VISIBLE);
+            holder.replyedLinearLayout2.setBackground(null);
+            holder.postTextSendTextView.setText(post.metin);
+            holder.usernameSendTextView.setText("@" + post.username);
+            holder.tarihSend.setText(post.date);
+
+            if (post.image != null) {
+                holder.postImageSendImageView.setVisibility(View.VISIBLE);
+                Picasso.get().load(post.image).into(holder.postImageSendImageView);
+            } else {
+                holder.postImageSendImageView.setVisibility(View.GONE);
+            }
+            firebaseFirestore.collection("Post").document(post.id).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            // Firebase'den dönen verileri TextView'lere ve ImageView'e ata
+                            usernameSend = documentSnapshot.getString("username");
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
+                                    .get()
+                                    .addOnCompleteListener(task -> {
+                                        String userpp = null;
+                                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                                            DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
+                                            userpp = userSnapshot.getString("profilePhoto");
+                                            holder.postProfilePhotoSend.setImageDrawable(null);
+                                            Picasso.get().load(userpp).into(holder.postProfilePhotoSend);
+                                        }
+                                    });
+                        }
+                    });
+
+            firebaseFirestore.collection("Post").document(replyId).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            // Firebase'den dönen verileri TextView'lere ve ImageView'e ata
+                            usernameSend = documentSnapshot.getString("username");
+                            postTextSend = documentSnapshot.getString("metin");
+                            postImageUrl = documentSnapshot.getString("image");
+
+                            holder.username.setText(usernameSend);
+                            holder.postText.setText(postTextSend);
+
+                            if (postImageUrl != null) {
+                                holder.postImage.setVisibility(View.VISIBLE);
+                                Picasso.get().load(postImageUrl).into(holder.postImage);
+                            } else {
+                                holder.postImage.setVisibility(View.GONE);
+                            }
+
+                            holder.replyedLinearLayout.setVisibility(View.VISIBLE);
+
+                            firebaseFirestore.collection("Users").whereEqualTo("username", usernameSend)
+                                    .get()
+                                    .addOnCompleteListener(task -> {
+                                        String userpp = null;
+                                        if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                                            DocumentSnapshot userSnapshot = task.getResult().getDocuments().get(0);
+                                            userpp = userSnapshot.getString("profilePhoto");
+                                            holder.PP.setImageDrawable(null);
+                                            Picasso.get().load(userpp).into(holder.PP);
+                                        }
+                                    });
+                            // Verileri ilgili alanlara yazdır
+
+
+
+                            // Resim yüklemek için Glide ya da Picasso gibi kütüphaneler kullanabilirsiniz
+
+
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Firebase'den veri çekilirken hata oluşursa logla
+                        Log.e("FirebaseError", "Reply data could not be retrieved: " + e.getMessage());
+                    });
         }
-        holder.postText.setText(post.metin);
-        holder.username.setText("@" + post.username);
-        holder.tarih.setText(post.date);
-        if (post.image != null) {
-            holder.postImage.setVisibility(View.VISIBLE);
-            Picasso.get().load(post.image).into(holder.postImage);
-        } else {
-            holder.postImage.setVisibility(View.GONE);
-        }
+
+
+
+
+
+
 
         postId=post.id;
         sharedPreferences = context.getSharedPreferences(PREF_NAME, MODE_PRIVATE);
@@ -772,9 +917,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     }
 
     public static class PostViewHolder extends RecyclerView.ViewHolder {
-        TextView postText, username, tarih, btnBegenmeSayisi,usernameSendTextView,postTextSendTextView;
-        LinearLayout replyedLinearLayout;
-        ImageView postImage, PP,postImageSendImageView,postProfilePhotoSend,replyButton, commentButton, likeButton;
+        TextView postText, username, tarih, btnBegenmeSayisi,usernameSendTextView,postTextSendTextView,tarihSend;
+        LinearLayout replyedLinearLayout,replyedLinearLayout2;
+        ImageView postImage, PP,postImageSendImageView,postProfilePhotoSend,replyButton, commentButton, likeButton,L_shape;
 
 
         public PostViewHolder(@NonNull View itemView) {
@@ -793,10 +938,15 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
             btnBegenmeSayisi = itemView.findViewById(R.id.btnBegenmeSayisi);
 
             replyedLinearLayout = itemView.findViewById(R.id.replyedLinearLayout);
+            replyedLinearLayout2 = itemView.findViewById(R.id.replyedLinearLayout2);
+
             usernameSendTextView = itemView.findViewById(R.id.usernameSend);
             postTextSendTextView = itemView.findViewById(R.id.post_textSend);
             postImageSendImageView = itemView.findViewById(R.id.post_imageSend);
             postProfilePhotoSend = itemView.findViewById(R.id.profilePhotoSend);
+            tarihSend = itemView.findViewById(R.id.tarihSend);
+
+            L_shape = itemView.findViewById(R.id.L_shape);
 
 
 

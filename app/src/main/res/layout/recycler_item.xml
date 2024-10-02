@@ -18,7 +18,7 @@
             android:id="@+id/profilePhoto"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/my_account"
+
             android:layout_marginEnd="10dp" />
 
         <LinearLayout
@@ -68,65 +68,110 @@
                 android:layout_height="300dp"
                 android:layout_marginBottom="1dp"
                 android:scaleType="centerCrop"
-                android:src="@drawable/upload"
+
                 android:visibility="visible" />
         </LinearLayout>
     </LinearLayout>
 
 
-    //
+    <!-- Post Text Section -->
+
+
+    <!-- Buttons Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:weightSum="2">
+
+            <ImageView
+                android:paddingLeft="5dp"
+                android:paddingRight="1dp"
+                android:id="@+id/L_shape"
+                android:layout_width="50dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+
+                android:scaleType="fitXY"
+                android:src="@drawable/corner"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:layout_width="50dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                 />
+        </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/replyedLinearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingLeft="0dp"
+        android:paddingTop="10dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="10dp">
 
         <LinearLayout
-            android:id="@+id/replyedLinearLayout"
+            android:id="@+id/replyedLinearLayout2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingLeft="50dp"
-            android:paddingRight="10dp"
-            android:paddingTop="10dp"
+            android:background="@drawable/border"
             android:orientation="horizontal"
-            android:paddingBottom="10dp"
-            >
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="2dp"
-                android:background="@drawable/border">
-
+            android:padding="2dp">
 
 
             <com.github.siyamed.shapeimageview.CircularImageView
                 android:id="@+id/profilePhotoSend"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/my_account"
-                android:layout_marginEnd="10dp" />
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/my_account" />
+
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:orientation="vertical">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
+
                     <TextView
                         android:id="@+id/usernameSend"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="16sp"
                         android:text="Username"
                         android:textColor="@color/white"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tarihSend"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginLeft="20dp"
+                        android:text="Tarih"
+                        android:textColor="#BDBDBD"
+                        android:textSize="14sp" />
                 </LinearLayout>
+
                 <TextView
                     android:id="@+id/post_textSend"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="16sp"
-                    android:textColor="@color/white"
+                    android:layout_marginBottom="5dp"
                     android:text="İçerik"
-                    android:layout_marginBottom="5dp" />
+                    android:textColor="@color/white"
+                    android:textSize="16sp" />
                 <!-- Post Image Section -->
                 <ImageView
                     android:id="@+id/post_imageSend"
@@ -134,17 +179,14 @@
                     android:layout_height="200dp"
                     android:layout_marginBottom="1dp"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/upload"
+
                     android:visibility="visible" />
             </LinearLayout>
-            </LinearLayout>
-
         </LinearLayout>
+    </LinearLayout>
 
-    <!-- Post Text Section -->
+    </LinearLayout>
 
-
-    <!-- Buttons Section -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
