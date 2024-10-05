@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black"
+    android:background="@color/white"
     android:orientation="vertical"
     tools:context=".AnaSayfa"
     android:layout_marginBottom="70dp">
@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:text="username"
-            android:textColor="@color/white"
+
             android:visibility="visible" />
 
     </LinearLayout>
@@ -74,16 +74,12 @@
             android:id="@+id/followerTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
-            android:layout_marginRight="100dp"
-            android:textColor="#FFFFFF" />
+            android:layout_marginRight="100dp" />
 
         <TextView
             android:id="@+id/followedTextView"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="#FFFFFF" />
+            android:layout_height="wrap_content" />
     </LinearLayout>
 
 
@@ -135,8 +131,7 @@
             android:layout_height="0dp"
             android:layout_weight="1"
 
-            android:scrollbars="vertical"
-            android:background="@color/black"/>
+            android:scrollbars="vertical" />
 
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

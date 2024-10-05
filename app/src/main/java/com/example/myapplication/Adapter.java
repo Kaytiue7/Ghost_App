@@ -92,7 +92,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
 
         if (post.postType.equals("Post") || post.postType.isEmpty()){
-            holder.L_shape.setVisibility(View.INVISIBLE);
+            holder.L_shape.setVisibility(View.GONE);
             holder.replyedLinearLayout.setVisibility(View.GONE);
 
             holder.postText.setText(post.metin);
@@ -132,7 +132,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
 
         }
         else if(post.postType.equals("Re-Post")){
-            holder.L_shape.setVisibility(View.INVISIBLE);
+            holder.L_shape.setVisibility(View.GONE);
             holder.postText.setText(post.metin);
             holder.username.setText("@" + post.username);
             holder.tarih.setText(post.date);
@@ -760,24 +760,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                     progressBar.setProgress(100);
 
                     // 2 saniye gecikme ile işlemleri gerçekleştir
-                    new Handler().postDelayed(() -> {
-                        // Progress barı gizle
-                        progressBar.setVisibility(View.GONE);
-
-                        // UI elemanlarını sıfırla
-                        delete.setVisibility(View.GONE);
-                        selectedPhoto.setVisibility(View.GONE);
-                        selectedPhoto.setImageResource(0);
-                        selectPhotoButton.setVisibility(View.VISIBLE);
-                        editText.setText(null);
-                        gonder.setVisibility(View.VISIBLE);
-                        replyedLinearLayout.setVisibility(View.VISIBLE);
-
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                        AlertDialog alertDialog = builder.create();
-                        alertDialog.dismiss();
-                    }, 2000);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    AlertDialog alertDialog = builder.create();
+                    alertDialog.dismiss();
 
                 })
                 .addOnFailureListener(e -> {
@@ -854,24 +839,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
                     progressBar.setProgress(100);
 
                     // 2 saniye gecikme ile işlemleri gerçekleştir
-                    new Handler().postDelayed(() -> {
-                        // Progress barı gizle
-                        progressBar.setVisibility(View.GONE);
-
-                        // UI elemanlarını sıfırla
-                        delete.setVisibility(View.GONE);
-                        selectedPhoto.setVisibility(View.GONE);
-                        selectedPhoto.setImageResource(0);
-                        selectPhotoButton.setVisibility(View.VISIBLE);
-                        editText.setText(null);
-                        gonder.setVisibility(View.VISIBLE);
-                        replyedLinearLayout.setVisibility(View.VISIBLE);
-
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                        AlertDialog alertDialog = builder.create();
-                        alertDialog.dismiss();
-                    }, 2000);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    AlertDialog alertDialog = builder.create();
+                    alertDialog.dismiss();
 
                 })
                 .addOnFailureListener(e -> {

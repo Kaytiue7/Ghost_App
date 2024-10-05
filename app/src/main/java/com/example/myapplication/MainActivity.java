@@ -181,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
         ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
         selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
         selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
-        Button cameraButton = dialogView.findViewById(R.id.cameraButton); // Burada dialogView üzerinden erişiyoruz
+        ImageView cameraButton = dialogView.findViewById(R.id.cameraButton); // Burada dialogView üzerinden erişiyoruz
         editText = dialogView.findViewById(R.id.editText);
         gonder = dialogView.findViewById(R.id.gonder);
         delete = dialogView.findViewById(R.id.delete);
@@ -217,6 +217,7 @@ public class MainActivity extends AppCompatActivity {
             selectedPhoto.setVisibility(View.GONE);
             delete.setVisibility(View.GONE);
             selectPhotoButton.setVisibility(View.VISIBLE);
+            cameraButton.setVisibility(View.VISIBLE);
         });
 
         gonder.setOnClickListener(v -> {
@@ -259,7 +260,9 @@ public class MainActivity extends AppCompatActivity {
                     selectedPhoto.setImageBitmap(bitmap);
                     selectedPhoto.setVisibility(View.VISIBLE);
                     delete.setVisibility(View.VISIBLE);
+                    cameraButton.setVisibility(View.VISIBLE);
                     selectPhotoButton.setVisibility(View.GONE);
+                    cameraButton.setVisibility(View.GONE);
                 } catch (Exception e) {
                     Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
                 }
@@ -269,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
                 selectedPhoto.setVisibility(View.VISIBLE);
                 delete.setVisibility(View.VISIBLE);
                 selectPhotoButton.setVisibility(View.GONE);
+                cameraButton.setVisibility(View.GONE);
             }
         }
     }
@@ -311,19 +315,9 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(MainActivity.this, "Post added", Toast.LENGTH_SHORT).show();
                             progressBar.setProgress(100);
 
-                            // 2 saniye gecikme ile işlemleri gerçekleştir
-                            new Handler().postDelayed(() -> {
-                                // Progress barı gizle
-                                progressBar.setVisibility(View.GONE);
-
-                                // UI elemanlarını sıfırla
-                                delete.setVisibility(View.GONE);
-                                selectedPhoto.setVisibility(View.GONE);
-                                selectedPhoto.setImageResource(0);
-                                selectPhotoButton.setVisibility(View.VISIBLE);
-                                editText.setText(null);
-                                gonder.setVisibility(View.VISIBLE);
-                            }, 2000);
+                            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                            AlertDialog alertDialog = builder.create();
+                            alertDialog.dismiss();
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(MainActivity.this, "Error adding post", Toast.LENGTH_SHORT).show();

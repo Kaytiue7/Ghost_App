@@ -4,6 +4,6 @@
     <stroke
         android:width="0.5dp"
 
-        android:color="#F8F4FF" /> <!-- Kenarlık rengi ve kalınlığı -->
+        android:color="@color/black" /> <!-- Kenarlık rengi ve kalınlığı -->
     <corners android:radius="4dp" /> <!-- Kenar yuvarlama, isteğe bağlı -->
 </shape>

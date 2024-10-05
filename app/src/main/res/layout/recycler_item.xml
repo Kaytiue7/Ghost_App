@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/black">
+    >
 
     <!-- Profile Information Section -->
     <LinearLayout
@@ -37,8 +37,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="16sp"
-                    android:text="Username"
-                    android:textColor="@color/white"
+
                     android:textStyle="bold" />
 
                 <TextView
@@ -47,7 +46,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
                     android:layout_gravity="center"
-                    android:text="Tarih"
+
                     android:textColor="#BDBDBD"
                     android:layout_marginLeft="20dp" />
             </LinearLayout>
@@ -57,8 +56,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
-                android:text="İçerik"
-                android:textColor="@color/white"
+
+
                 android:layout_marginBottom="5dp" />
 
             <!-- Post Image Section -->
@@ -131,7 +130,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginEnd="10dp"
-                android:src="@drawable/my_account" />
+                />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -148,8 +147,7 @@
                         android:id="@+id/usernameSend"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Username"
-                        android:textColor="@color/white"
+
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -159,8 +157,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:layout_marginLeft="20dp"
-                        android:text="Tarih"
-                        android:textColor="#BDBDBD"
+
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -169,8 +166,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="5dp"
-                    android:text="İçerik"
-                    android:textColor="@color/white"
+
+
                     android:textSize="16sp" />
                 <!-- Post Image Section -->
                 <ImageView
@@ -241,5 +238,5 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F8F4FF" />
+        android:background="@color/black" />
 </LinearLayout>
