@@ -59,6 +59,9 @@
             android:name=".AramaSayfa"
             android:exported="false" />
         <activity
+            android:name=".LikesFragment"
+            android:exported="false" />
+        <activity
             android:name=".HesapSayfa"
             android:exported="false" />
         <activity

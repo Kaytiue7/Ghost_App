@@ -1,7 +1,5 @@
 package com.example.myapplication;
 
-import static java.security.AccessController.getContext;
-
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -14,7 +12,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,18 +29,11 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -51,10 +41,8 @@ import com.squareup.picasso.Picasso;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -178,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setView(dialogView);
 
         // dialogView'den bileşenleri buradan tanımlıyoruz
-        ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
+        ImageView profilePhoto = dialogView.findViewById(R.id.profileImageView);
         selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
         selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
         ImageView cameraButton = dialogView.findViewById(R.id.cameraButton); // Burada dialogView üzerinden erişiyoruz

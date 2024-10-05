@@ -23,7 +23,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.squareup.picasso.Picasso;
@@ -87,7 +86,7 @@ public class HesapSayfa extends Fragment {
 
         String storedUsername = sharedPreferences.getString(KEY_USERNAME, null);
 
-        imageView = view.findViewById(R.id.profilePhoto);
+        imageView = view.findViewById(R.id.profileImageView);
         textView = view.findViewById(R.id.username);
         btnPostlarim = view.findViewById(R.id.btnPostlarim);
         btnBegendiklerim = view.findViewById(R.id.btnBegendiklerim);

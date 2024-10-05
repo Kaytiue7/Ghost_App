@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,7 +21,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,9 +32,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -53,6 +49,7 @@ import java.util.UUID;
 public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
     private static final int PICK_IMAGE_REQUEST = 1;
     private Context context;
+    private RecyclerView recyclerView; // RecyclerView değişkeni
     private List<Post> postList;
     private FirebaseFirestore firebaseFirestore;
     private SharedPreferences sharedPreferences;
@@ -75,7 +72,6 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         this.context = context;
         this.postList = postList;
     }
-
     @NonNull
     @Override
     public PostViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -373,9 +369,26 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         });
 
         // Beğen butonuna tıklama olayı
+        holder.btnBegenmeSayisi.setOnClickListener(v -> {
+            // Burada beğenme sayısına tıklanınca yapılacak işlemler olacak.
+            // Örneğin, post detayına gitmek ya da beğenenleri göstermek gibi.
+            openLikeDetails(post.id);
+        });
 
 
 
+    }
+    private void openLikeDetails(String postId) {
+        Bundle bundle = new Bundle();
+        bundle.putString("postId", postId);
+        // FragmentManager'ı context üzerinden al
+        FragmentManager fragmentManager = ((AppCompatActivity) context).getSupportFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        LikesFragment likesFragment = new LikesFragment();
+        likesFragment.setArguments(bundle);
+        fragmentTransaction.replace(R.id.frame_layout, likesFragment);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
     }
     private void openPostDetail(Post post) {
         Intent intent = new Intent(context, PostDetay2.class);
@@ -468,7 +481,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         View dialogView = inflater.inflate(R.layout.yanit_yukleme_ekran, null);
         builder.setView(dialogView);
 
-        ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
+        ImageView profilePhoto = dialogView.findViewById(R.id.profileImageView);
         selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
         selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
         editText = dialogView.findViewById(R.id.editText);
@@ -599,7 +612,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         View dialogView = inflater.inflate(R.layout.yanit_yukleme_ekran, null);
         builder.setView(dialogView);
 
-        ImageView profilePhoto = dialogView.findViewById(R.id.profilePhoto);
+        ImageView profilePhoto = dialogView.findViewById(R.id.profileImageView);
         selectedPhoto = dialogView.findViewById(R.id.selectedPhoto);
         selectPhotoButton = dialogView.findViewById(R.id.selectPhotoButton);
         editText = dialogView.findViewById(R.id.editText);
@@ -896,7 +909,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
             super(itemView);
             postText = itemView.findViewById(R.id.post_text);
             postImage = itemView.findViewById(R.id.post_image);
-            PP = itemView.findViewById(R.id.profilePhoto);
+            PP = itemView.findViewById(R.id.profileImageView);
             username = itemView.findViewById(R.id.username);
             tarih = itemView.findViewById(R.id.tarih);
 
