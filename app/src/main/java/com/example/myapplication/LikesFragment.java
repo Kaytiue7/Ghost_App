@@ -1,10 +1,7 @@
 package com.example.myapplication;
 
-import static com.example.myapplication.DateUtils.getTimeAgo;
-
 import static java.nio.file.Paths.get;
 
-import android.annotation.SuppressLint;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -15,17 +12,14 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
-import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.auth.User;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -45,6 +39,7 @@ public class LikesFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             postId = getArguments().getString("postId");
+            Toast.makeText(getContext(), ""+postId, Toast.LENGTH_SHORT).show();
         }
         firebaseFirestore = FirebaseFirestore.getInstance();
     }
@@ -53,60 +48,74 @@ public class LikesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_likes, container, false);
+        Log.d("LikesFragment", "Fragment created"); // Log ekleyin
         recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         userList = new ArrayList<>();
-        usersAdapter = new AdapterUsers(userList); // UsersAdapter, profil fotoğraflarını göstermek için kullanılan adaptör
+        usersAdapter = new AdapterUsers(userList);
         recyclerView.setAdapter(usersAdapter);
-        loadLikes(postId); // beğenileri yükle
+        loadLikes(postId);
         return view;
     }
 
+
     private void loadLikes(String postId) {
+        Log.d("LikesFragment", "Loading likes for post ID: " + postId); // Log ekleyin
         firebaseFirestore.collection("UsersLiked")
-                .document(postId)
+                .whereEqualTo("PostId", postId) // PostId alanına göre sorgu
                 .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        List<String> likedUsers = (List<String>) documentSnapshot.get("LikedFrom");
-                        if (likedUsers != null) {
-                            // Kullanıcı adlarını al ve profil fotoğraflarını yükle
-                            getUserProfiles(likedUsers);
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                            String likedUsersString = document.getString("LikedFrom");
+                            Log.d("LikesFragment", "LikedFrom: " + likedUsersString); // Log ekleyin
+                            if (likedUsersString != null && !likedUsersString.isEmpty()) {
+                                List<String> likedUsers = new ArrayList<>(Arrays.asList(likedUsersString.split(",")));
+                                Log.d("LikesFragment", "Liked Users: " + likedUsers); // Log ekleyin
+                                getUserProfiles(likedUsers);
+                            } else {
+                                Log.d("LikesFragment", "No users liked this post."); // Log ekleyin
+                            }
                         }
+                    } else {
+                        Log.d("LikesFragment", "Post document does not exist."); // Log ekleyin
                     }
                 })
                 .addOnFailureListener(e -> {
-                    // Hata durumu
                     Log.e("LikesFragment", "Error getting likes", e);
                 });
     }
 
+
+
     private void getUserProfiles(List<String> likedUsers) {
-        userList.clear(); // Yeni veriler eklenmeden önce listeyi temizle
+        userList.clear();
 
         if (likedUsers.isEmpty()) {
-            usersAdapter.notifyDataSetChanged(); // Eğer hiç kullanıcı yoksa adaptörü güncelle
+            Log.d("LikesFragment", "No liked users to retrieve profiles for."); // Log ekleyin
+            usersAdapter.notifyDataSetChanged();
             return;
         }
 
-        // Tüm kullanıcıları tek seferde al
         firebaseFirestore.collection("Users")
-                .whereIn("username", likedUsers) // likedUsers listesindeki kullanıcıları filtrele
+                .whereIn("username", likedUsers)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         String username = document.getString("username");
                         String profilePhoto = document.getString("profilePhoto");
-                        PostUser postUser = new PostUser(username, profilePhoto); // PostUser modelini doldur
-                        userList.add(postUser); // Kullanıcıyı listeye ekle
+                        Log.d("LikesFragment", "User: " + username + ", Profile Photo: " + profilePhoto); // Log ekleyin
+                        PostUser postUser = new PostUser(username, profilePhoto);
+                        userList.add(postUser);
                     }
-                    usersAdapter.notifyDataSetChanged(); // Adaptörü güncelle
+                    usersAdapter.notifyDataSetChanged();
                 })
                 .addOnFailureListener(e -> {
-                    // Hata durumu
                     Log.e("LikesFragment", "Error getting user profiles", e);
                 });
     }
+
+
 
 }
 

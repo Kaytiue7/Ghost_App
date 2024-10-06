@@ -2,6 +2,8 @@ package com.example.myapplication;
 
 import static android.content.Context.MODE_PRIVATE;
 
+import static java.security.AccessController.getContext;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -21,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -372,8 +375,9 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         holder.btnBegenmeSayisi.setOnClickListener(v -> {
             // Burada beğenme sayısına tıklanınca yapılacak işlemler olacak.
             // Örneğin, post detayına gitmek ya da beğenenleri göstermek gibi.
-            openLikeDetails(post.id);
+            openLikeDetails(post.id);  // Doğrudan post.id kullanın
         });
+
 
 
 
@@ -389,6 +393,7 @@ public class Adapter extends RecyclerView.Adapter<Adapter.PostViewHolder> {
         fragmentTransaction.replace(R.id.frame_layout, likesFragment);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+        Toast.makeText(context, ""+postId, Toast.LENGTH_SHORT).show();
     }
     private void openPostDetail(Post post) {
         Intent intent = new Intent(context, PostDetay2.class);
