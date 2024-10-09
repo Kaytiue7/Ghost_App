@@ -38,7 +38,7 @@ public class AramaSayfa extends Fragment {
     private Adapter adapter;
     private Button button;
     private List<Post> postList;
-private TextView textView;
+    private TextView textBox;
     private FirebaseFirestore firebaseFirestore;
 
     @Nullable
@@ -47,7 +47,7 @@ private TextView textView;
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_arama_sayfa, container, false);
 
-        textView = view.findViewById(R.id.textView);
+        textBox = view.findViewById(R.id.textBox);
 
         button = view.findViewById(R.id.button);
         recyclerView = view.findViewById(R.id.recyclerView);
@@ -56,7 +56,7 @@ private TextView textView;
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getData((String) textView.getText());
+                getData((String) textBox.getText());
             }
         });
 
