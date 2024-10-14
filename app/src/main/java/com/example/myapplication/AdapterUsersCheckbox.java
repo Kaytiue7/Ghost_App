@@ -81,12 +81,21 @@ public class AdapterUsersCheckbox extends RecyclerView.Adapter<AdapterUsersCheck
 
                 String groupType = selectedUsernamesList.size() > 2 ? "Group" : "DirectMessage";
 
-                if (groupType.equals("Group")){
-                    groupTitle=username+" Grubu";
+                
+                StringBuilder groupTitleBuilder = new StringBuilder();
+
+                for (int i = 0; i < selectedUsernamesList.size(); i++) {
+                    groupTitleBuilder.append(selectedUsernamesList.get(i));
+                    if (i != selectedUsernamesList.size() - 1) {
+                        groupTitleBuilder.append(", "); // Son kullanıcı adı hariç virgülle ayır
+                    }
                 }
-                if (groupType.equals("DirectMessage")){
-                    groupTitle = username;
+
+                if (selectedUsernamesList.size() > 1) {
+                    groupTitleBuilder.append(" Grubu"); // Birden fazla kullanıcı varsa 'Grubu' ekle
                 }
+
+                groupTitle = groupTitleBuilder.toString();
 
                 firebaseFirestore.collection("Messages")
                         .document(groupId)
@@ -129,28 +138,6 @@ public class AdapterUsersCheckbox extends RecyclerView.Adapter<AdapterUsersCheck
         });
     }
 
-
-    private void updateGroupType(String groupId, int userCount) {
-
-        Date currentDate = new Date();
-        Timestamp currentTimestamp = new Timestamp(currentDate);
-
-        String groupType = userCount > 2 ? "Group" : "DirectMessage"; // Kullanıcı sayısına göre groupType belirle
-        // Belgeyi ekle veya güncelle
-        firebaseFirestore.collection("Messages")
-                .document(groupId)
-                .set(new HashMap<String, Object>() {{
-                    put("groupType", groupType); // groupType'ı ekle
-                    put("date", currentTimestamp); // groupType'ı ekle
-
-                }}, SetOptions.merge()) // Mevcut alanlarla birleştir
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(context, "GroupType başarıyla eklendi: " + groupType, Toast.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(context, "GroupType eklenirken hata oluştu: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
 
     private void openFragment() {
         FragmentManager fragmentManager = ((AppCompatActivity) context).getSupportFragmentManager();
