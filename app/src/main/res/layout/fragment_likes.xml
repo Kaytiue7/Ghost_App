@@ -8,6 +8,8 @@
     tools:context=".LikesFragment"
     android:layout_marginBottom="70dp">
 
+    <!-- Search Bar -->
+
     <!-- Top Menu CardView -->
     <androidx.cardview.widget.CardView
         android:id="@+id/topMenu"
@@ -37,6 +39,12 @@
     </androidx.cardview.widget.CardView>
 
     <!-- SwipeRefreshLayout -->
+    <EditText
+        android:id="@+id/searchEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Kullanıcı Ara"
+        android:padding="10dp" />
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshLayout"

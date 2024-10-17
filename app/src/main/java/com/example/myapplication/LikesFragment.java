@@ -8,10 +8,13 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -33,13 +36,15 @@ public class LikesFragment extends Fragment {
     private RecyclerView recyclerView;
     private AdapterUsers usersAdapter;
     private List<PostUser> userList; // PostUser, kullanıcı adını ve profil fotoğrafını tutan bir model sınıfı
+    private List<PostUser> filteredUserList; // Filtrelenmiş kullanıcı listesi
+    private EditText searchEditText;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             postId = getArguments().getString("postId");
-            Toast.makeText(getContext(), ""+postId, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "" + postId, Toast.LENGTH_SHORT).show();
         }
         firebaseFirestore = FirebaseFirestore.getInstance();
     }
@@ -48,37 +53,50 @@ public class LikesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_likes, container, false);
-        Log.d("LikesFragment", "Fragment created"); // Log ekleyin
+
         recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        searchEditText = view.findViewById(R.id.searchEditText);
         userList = new ArrayList<>();
-        usersAdapter = new AdapterUsers(userList);
+        filteredUserList = new ArrayList<>();
+        usersAdapter = new AdapterUsers(filteredUserList); // Başlangıçta filtrelenmiş listeyi bağla
         recyclerView.setAdapter(usersAdapter);
+
+        // Arama kutusunu izlemek için TextWatcher ekleyelim
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // Boş bırakılabilir
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterUsers(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Boş bırakılabilir
+            }
+        });
+
         loadLikes(postId);
         return view;
     }
 
-
     private void loadLikes(String postId) {
-        Log.d("LikesFragment", "Loading likes for post ID: " + postId); // Log ekleyin
         firebaseFirestore.collection("UsersLiked")
-                .whereEqualTo("PostId", postId) // PostId alanına göre sorgu
+                .whereEqualTo("PostId", postId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
                         for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                             String likedUsersString = document.getString("LikedFrom");
-                            Log.d("LikesFragment", "LikedFrom: " + likedUsersString); // Log ekleyin
                             if (likedUsersString != null && !likedUsersString.isEmpty()) {
                                 List<String> likedUsers = new ArrayList<>(Arrays.asList(likedUsersString.split(",")));
-                                Log.d("LikesFragment", "Liked Users: " + likedUsers); // Log ekleyin
                                 getUserProfiles(likedUsers);
-                            } else {
-                                Log.d("LikesFragment", "No users liked this post."); // Log ekleyin
                             }
                         }
-                    } else {
-                        Log.d("LikesFragment", "Post document does not exist."); // Log ekleyin
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -86,13 +104,10 @@ public class LikesFragment extends Fragment {
                 });
     }
 
-
-
     private void getUserProfiles(List<String> likedUsers) {
         userList.clear();
 
         if (likedUsers.isEmpty()) {
-            Log.d("LikesFragment", "No liked users to retrieve profiles for."); // Log ekleyin
             usersAdapter.notifyDataSetChanged();
             return;
         }
@@ -104,19 +119,29 @@ public class LikesFragment extends Fragment {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         String username = document.getString("username");
                         String profilePhoto = document.getString("profilePhoto");
-                        Log.d("LikesFragment", "User: " + username + ", Profile Photo: " + profilePhoto); // Log ekleyin
                         PostUser postUser = new PostUser(username, profilePhoto);
                         userList.add(postUser);
                     }
-                    usersAdapter.notifyDataSetChanged();
+                    filterUsers(searchEditText.getText().toString()); // İlk yüklemede aramayı uygula
                 })
                 .addOnFailureListener(e -> {
                     Log.e("LikesFragment", "Error getting user profiles", e);
                 });
     }
 
-
-
+    private void filterUsers(String query) {
+        filteredUserList.clear();
+        if (query.isEmpty()) {
+            filteredUserList.addAll(userList); // Arama boşsa tüm listeyi göster
+        } else {
+            for (PostUser user : userList) {
+                if (user.getUsername().toLowerCase().contains(query.toLowerCase())) {
+                    filteredUserList.add(user);
+                }
+            }
+        }
+        usersAdapter.notifyDataSetChanged(); // Listeyi güncelle
+    }
 }
 
 
