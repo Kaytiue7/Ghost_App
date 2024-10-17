@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.add) {
                 send();
             } else if (itemId == R.id.message) {
-                clearLocalDatabase();
+                replaceFragment(new MesajSayfa());
             } else if (itemId == R.id.account) {
 
                 sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
