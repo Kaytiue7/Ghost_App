@@ -59,7 +59,7 @@ public class LikesFragment extends Fragment {
         searchEditText = view.findViewById(R.id.searchEditText);
         userList = new ArrayList<>();
         filteredUserList = new ArrayList<>();
-        usersAdapter = new AdapterUsers(filteredUserList); // Başlangıçta filtrelenmiş listeyi bağla
+        usersAdapter = new AdapterUsers(filteredUserList, getContext()); // Context'i ekledik
         recyclerView.setAdapter(usersAdapter);
 
         // Arama kutusunu izlemek için TextWatcher ekleyelim
